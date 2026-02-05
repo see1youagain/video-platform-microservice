@@ -2,8 +2,8 @@ package conf
 
 import (
 	"fmt"
-	"rpc-user/internal/db"
 	"time"
+	"video-platform-microservice/rpc-user/internal/db"
 
 	"github.com/joho/godotenv"
 	"gorm.io/driver/mysql"
