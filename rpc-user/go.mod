@@ -1,4 +1,4 @@
-module rpc-user
+module video-platform-microservice/rpc-user
 
 go 1.24.3
 
