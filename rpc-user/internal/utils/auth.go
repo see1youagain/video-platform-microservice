@@ -2,13 +2,15 @@ package utils
 
 import (
 	"errors"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var JwtSecret = []byte("你的密钥_请在生产环境中从环境变量读取")
+var JwtSecret = []byte{}
 
 // HashPassword 密码加密
 func HashPassword(password string) (string, error) {
@@ -52,4 +54,14 @@ func ParseToken(tokenString string) (jwt.MapClaims, error) {
 	}
 
 	return nil, errors.New("invalid token")
+}
+func getEnv(key, def string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return def
+}
+func init() {
+	godotenv.Load()
+	JwtSecret = []byte(getEnv("JWT_SECRET","你的密钥_请在生产环境中从环境变量读取"))
 }
