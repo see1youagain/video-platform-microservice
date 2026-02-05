@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 	"os"
-	"rpc-user/conf"
-	user "rpc-user/kitex_gen/user/userservice"
+	"video-platform-microservice/rpc-user/conf"
+	user "video-platform-microservice/rpc-user/kitex_gen/user/userservice"
 
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
 	"github.com/cloudwego/kitex/server"
