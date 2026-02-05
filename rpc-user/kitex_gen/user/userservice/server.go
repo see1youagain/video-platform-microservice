@@ -3,7 +3,7 @@ package userservice
 
 import (
 	server "github.com/cloudwego/kitex/server"
-	user "rpc-user/kitex_gen/user"
+	user "video-platform-microservice/rpc-user/kitex_gen/user"
 )
 
 // NewServer creates a server.Server with the given handler and options.

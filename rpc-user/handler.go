@@ -13,9 +13,9 @@ package main
 
 import (
 	"context"
-	"rpc-user/internal/db"
-	"rpc-user/internal/utils"
-	user "rpc-user/kitex_gen/user"
+	"video-platform-microservice/rpc-user/internal/db"
+	"video-platform-microservice/rpc-user/internal/utils"
+	user "video-platform-microservice/rpc-user/kitex_gen/user"
 )
 
 // UserServiceImpl implements the last service interface defined in the IDL.
