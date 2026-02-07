@@ -2,15 +2,15 @@ package utils
 
 import (
 	"errors"
+	"log"
 	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 )
 
-var JwtSecret = []byte{}
+var JwtSecret []byte
 
 // HashPassword 密码加密
 func HashPassword(password string) (string, error) {
@@ -55,13 +55,16 @@ func ParseToken(tokenString string) (jwt.MapClaims, error) {
 
 	return nil, errors.New("invalid token")
 }
-func getEnv(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
-}
-func init() {
-	godotenv.Load()
-	JwtSecret = []byte(getEnv("JWT_SECRET","你的密钥_请在生产环境中从环境变量读取"))
+
+func InitJWT() error {
+    secret := os.Getenv("JWT_SECRET")
+    if secret == "" {
+        return errors.New("JWT_SECRET 环境变量未设置")
+    }
+    if len(secret) < 32 {
+        log.Println("警告: JWT_SECRET 长度过短，建议至少 32 个字符")
+    }
+    JwtSecret = []byte(secret)
+    log.Println("JWT 密钥初始化成功")
+    return nil
 }
