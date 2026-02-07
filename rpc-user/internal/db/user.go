@@ -42,3 +42,4 @@ func GetUserByUsername(username string) (*User, error) {
     
     return &user, nil
 }
+

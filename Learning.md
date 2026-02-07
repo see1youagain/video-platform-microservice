@@ -150,3 +150,414 @@ rpc-user/
 
 * **原则**：`idl/*.thrift` 是**唯一的真理来源**。
 * **操作**：如果你修改了 thrift 文件，**必须**重新运行 `hz update` 或 `kitex -module ...` 命令来重新生成代码。不要试图手动修改 `kitex_gen` 或 `biz/model` 里的代码，下次生成会被覆盖。
+
+---
+
+## Etcd 与服务发现机制
+
+### 什么是 Etcd？
+
+**Etcd** 是一个分布式键值存储系统（类似一个"云端字典"），专门用于**配置管理**和**服务发现**。
+
+#### 类比：电话簿系统
+
+想象你在一个大公司工作：
+
+* **以前（单体应用）**：所有部门在一栋楼里，你想找财务部，直接走到3楼302房间。
+* **现在（微服务）**：各部门分散在全国各地，办公地址可能随时变动（服务器IP会变、端口会变、服务可能重启到新机器）。
+
+**问题**：Hertz（网关）怎么知道去哪里找 `rpc-user` 服务？
+
+**传统方案（硬编码）**：
+```go
+// ❌ 不好的做法
+client, _ := user.NewClient("user", client.WithHostPorts("127.0.0.1:8888"))
+```
+**问题**：
+- 如果 `rpc-user` 重启到 `192.168.1.100:9999`，代码要改
+- 如果有3台 `rpc-user` 做负载均衡，怎么办？
+- 如果某台机器宕机了，怎么自动切换？
+
+**Etcd 方案（动态发现）**：
+```go
+// ✅ 好的做法
+resolver, _ := etcd.NewEtcdResolver([]string{"127.0.0.1:2379"})
+client, _ := user.NewClient("user", client.WithResolver(resolver))
+```
+
+### Etcd 的核心功能
+
+#### 1. 服务注册（Service Registration）
+
+当 `rpc-user` 服务启动时：
+
+```go
+// main.go
+r, err := etcd.NewEtcdRegistry([]string{"127.0.0.1:2379"})
+svr := user.NewServer(
+    new(UserServiceImpl),
+    server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{
+        ServiceName: "user",  // ← 关键：注册的服务名
+    }),
+    server.WithRegistry(r),   // ← 把自己注册到 Etcd
+)
+```
+
+**Etcd 中会记录**：
+```
+服务名: user
+地址: 192.168.1.10:8888
+状态: 健康
+时间戳: 2024-01-15 10:30:00
+```
+
+#### 2. 服务发现（Service Discovery）
+
+当 Hertz 网关需要调用用户服务时：
+
+```go
+// api-gateway 中
+resolver, _ := etcd.NewEtcdResolver([]string{"127.0.0.1:2379"})
+userClient, _ := user.NewClient("user", client.WithResolver(resolver))
+
+// 发起调用时，Kitex 自动：
+// 1. 查询 Etcd："给我所有名为 'user' 的服务地址"
+// 2. Etcd 返回：["192.168.1.10:8888", "192.168.1.11:8888"]
+// 3. 选择一个地址（负载均衡）发送请求
+```
+
+#### 3. 健康检查（Health Check）
+
+- 服务每隔几秒钟向 Etcd 发送**心跳**："我还活着"
+- 如果某个服务崩溃了，Etcd 会自动把它从列表中删除
+- 客户端下次查询时，就不会拿到已挂掉的服务地址
+
+### 为什么微服务必须要 Etcd？
+
+| 场景 | 没有 Etcd | 有 Etcd |
+|------|-----------|---------|
+| **服务地址变更** | 需要修改代码重新部署 | 自动更新，无需改代码 |
+| **服务宕机** | 请求会失败，需要手动摘除 | 自动检测并移除 |
+| **负载均衡** | 需要手动配置 Nginx | Kitex 自动轮询多个实例 |
+| **动态扩容** | 需要修改配置文件 | 新服务启动自动加入 |
+
+### Etcd 的替代品
+
+- **Consul**：HashiCorp 出品，功能更丰富
+- **Nacos**：阿里出品，支持配置中心+服务发现
+- **ZooKeeper**：Apache 出品，老牌方案
+
+它们的核心功能都一样：**让服务能够找到彼此**。
+
+---
+
+## Kitex 的 `With*` 函数模式详解
+
+### 什么是 `With*` 模式？
+
+这是 Go 语言中常见的**函数式选项模式（Functional Options Pattern）**。
+
+#### 问题背景
+
+创建一个 Kitex 服务器，可能有很多配置项：
+
+```go
+// ❌ 传统做法：参数列表会非常长
+NewServer(handler, serviceName, address, port, registry, timeout, maxConnNum, ...)
+```
+
+**问题**：
+- 参数太多，记不住顺序
+- 很多参数是可选的，每次都要传空值
+- 以后新增配置项，会破坏 API 兼容性
+
+#### 解决方案：使用 `With*` 函数
+
+```go
+// ✅ 优雅的做法
+svr := user.NewServer(
+    new(UserServiceImpl),                   // 必填参数
+    server.WithServerBasicInfo(...),        // 可选配置1
+    server.WithRegistry(r),                 // 可选配置2
+    server.WithServiceAddr(addr),           // 可选配置3
+)
+```
+
+### 原理解析
+
+#### 1. 核心定义
+
+```go
+// 定义一个配置函数类型
+type Option func(*Options)
+
+// 创建服务器时接收可变参数
+func NewServer(handler, opts ...Option) Server {
+    options := &Options{
+        // 默认配置
+        Port: 8888,
+        Timeout: 30 * time.Second,
+    }
+    
+    // 依次应用所有配置函数
+    for _, opt := range opts {
+        opt(options)
+    }
+    
+    // 使用最终的配置创建服务器
+    return &server{options: options}
+}
+```
+
+#### 2. 每个 `With*` 函数
+
+```go
+// WithServiceAddr 设置服务监听地址
+func WithServiceAddr(addr net.Addr) Option {
+    return func(o *Options) {
+        o.Address = addr
+    }
+}
+
+// WithRegistry 设置服务注册中心
+func WithRegistry(r registry.Registry) Option {
+    return func(o *Options) {
+        o.Registry = r
+    }
+}
+
+// WithServerBasicInfo 设置服务基本信息
+func WithServerBasicInfo(info *rpcinfo.EndpointBasicInfo) Option {
+    return func(o *Options) {
+        o.ServiceName = info.ServiceName
+    }
+}
+```
+
+### 常用的 `With*` 配置项
+
+#### Server 端（服务提供者）
+
+```go
+svr := user.NewServer(
+    new(UserServiceImpl),
+    
+    // 【必需】设置服务名（用于服务发现）
+    server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{
+        ServiceName: "user",
+    }),
+    
+    // 【推荐】注册到 Etcd
+    server.WithRegistry(etcdRegistry),
+    
+    // 【可选】指定监听地址（默认随机端口）
+    server.WithServiceAddr(addr),
+    
+    // 【可选】设置超时时间
+    server.WithReadWriteTimeout(30 * time.Second),
+    
+    // 【可选】限制最大连接数
+    server.WithLimit(&limit.Option{
+        MaxConnections: 10000,
+        MaxQPS:         5000,
+    }),
+    
+    // 【可选】添加中间件
+    server.WithMiddleware(func(next endpoint.Endpoint) endpoint.Endpoint {
+        return func(ctx context.Context, req, resp interface{}) (err error) {
+            log.Println("请求开始")
+            err = next(ctx, req, resp)
+            log.Println("请求结束")
+            return err
+        }
+    }),
+)
+```
+
+#### Client 端（服务调用者）
+
+```go
+client, err := user.NewClient(
+    "user",  // 服务名
+    
+    // 【推荐】使用服务发现
+    client.WithResolver(etcdResolver),
+    
+    // 【备选】直接指定地址（不推荐生产环境使用）
+    // client.WithHostPorts("127.0.0.1:8888"),
+    
+    // 【可选】设置超时时间
+    client.WithRPCTimeout(5 * time.Second),
+    
+    // 【可选】设置重试策略
+    client.WithFailureRetry(retry.NewFailurePolicy()),
+    
+    // 【可选】负载均衡策略
+    client.WithLoadBalancer(loadbalance.NewWeightedRandomBalancer()),
+    
+    // 【可选】熔断器
+    client.WithCircuitBreaker(circuitbreak.NewCBSuite(...)),
+)
+```
+
+### 为什么这么设计？
+
+#### 优点
+
+1. **可读性强**：每个配置项的名字一目了然
+   ```go
+   server.WithRegistry(r)          // 一看就知道是设置注册中心
+   server.WithServiceAddr(addr)    // 一看就知道是设置监听地址
+   ```
+
+2. **灵活性高**：想加什么配置就加什么，不需要的就不写
+   ```go
+   // 最简配置
+   svr := user.NewServer(handler)
+   
+   // 完整配置
+   svr := user.NewServer(handler, opt1, opt2, opt3, ...)
+   ```
+
+3. **向后兼容**：新增配置项不会破坏老代码
+   ```go
+   // 旧代码（只有2个配置）
+   svr := user.NewServer(handler, server.WithRegistry(r))
+   
+   // 新版本增加了 WithTracer，但旧代码依然能正常工作
+   ```
+
+4. **链式调用**：代码结构清晰
+   ```go
+   client, err := user.NewClient("user",
+       client.WithResolver(resolver),
+       client.WithRPCTimeout(5*time.Second),
+       client.WithRetry(...),
+   )
+   ```
+
+### 实战示例对比
+
+#### 场景：从开发环境迁移到生产环境
+
+**开发环境**（直连，不用 Etcd）：
+```go
+svr := user.NewServer(
+    new(UserServiceImpl),
+    server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{
+        ServiceName: "user",
+    }),
+    server.WithServiceAddr(&net.TCPAddr{Port: 8888}),
+)
+```
+
+**生产环境**（需要服务发现、限流、监控）：
+```go
+svr := user.NewServer(
+    new(UserServiceImpl),
+    server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{
+        ServiceName: "user",
+    }),
+    server.WithRegistry(etcdRegistry),              // ← 加上注册中心
+    server.WithLimit(&limit.Option{                 // ← 加上限流
+        MaxQPS: 10000,
+    }),
+    server.WithTracer(prometheus.NewServerTracer()), // ← 加上监控
+)
+```
+
+**只需要增加配置项，核心代码不变！**
+
+---
+
+## 完整调用链路图
+
+```
+┌─────────────┐
+│   浏览器     │
+└──────┬──────┘
+       │ HTTP: POST /api/login
+       ▼
+┌─────────────────────────┐
+│  Hertz 网关 (8080端口)   │
+│  - 解析 JSON            │
+│  - JWT 鉴权 (可选)       │
+└──────┬──────────────────┘
+       │ RPC (Thrift Binary)
+       │ 1. 查询 Etcd："user 服务在哪？"
+       │ 2. Etcd 返回："192.168.1.10:8888"
+       ▼
+┌─────────────────────────┐
+│  Kitex rpc-user 服务    │
+│  - 执行 Login 逻辑       │
+│  - 查询 MySQL           │
+│  - 返回 user_id         │
+└──────┬──────────────────┘
+       │ RPC Response
+       ▼
+┌─────────────────────────┐
+│  Hertz 网关             │
+│  - 接收 RPC 结果         │
+│  - 可能生成 JWT Token    │
+│  - 组装 HTTP Response    │
+└──────┬──────────────────┘
+       │ HTTP: 200 OK + JSON
+       ▼
+┌─────────────┐
+│   浏览器     │
+└─────────────┘
+```
+
+---
+
+## 常见问题 FAQ
+
+### Q1: 为什么不能直接 HTTP 调用 Kitex？
+
+**答**：Kitex 使用 Thrift 二进制协议，浏览器只认识 HTTP+JSON。就像你拿中文报纸给只懂英文的人看一样。
+
+### Q2: Etcd 挂了怎么办？
+
+**答**：
+1. Kitex 有本地缓存，短时间内可以使用旧的服务列表
+2. 生产环境应该部署 Etcd 集群（至少3个节点）保证高可用
+3. 可以降级到硬编码地址（但会失去动态发现能力）
+
+### Q3: 一个服务启动多个实例，怎么负载均衡？
+
+**答**：
+- 所有实例注册到 Etcd 时用**同一个服务名**（如 `user`）
+- Kitex Client 会自动拿到所有实例的地址列表
+- 使用负载均衡策略选择一个实例发送请求（默认是加权随机）
+
+```go
+// 启动3个 rpc-user 实例
+// 实例1: 监听 127.0.0.1:8881，注册为 "user"
+// 实例2: 监听 127.0.0.1:8882，注册为 "user"
+// 实例3: 监听 127.0.0.1:8883，注册为 "user"
+
+// Hertz 调用时
+userClient.Login(ctx, req) // Kitex 自动选择一个实例
+```
+
+### Q4: `With*` 函数的执行顺序重要吗？
+
+**答**：一般不重要，但有些特殊情况需要注意：
+
+```go
+// ❌ 错误示例：后面的配置会覆盖前面的
+server.WithServiceAddr(addr1),  // 这个会被覆盖
+server.WithServiceAddr(addr2),  // 最终使用这个
+```
+
+**建议**：每种配置只写一次，避免重复。
+
+---
+
+## 学习资源
+
+- [CloudWeGo 官方文档](https://www.cloudwego.io/)
+- [Kitex 教程](https://www.cloudwego.io/zh/docs/kitex/)
+- [Hertz 教程](https://www.cloudwego.io/zh/docs/hertz/)
+- [Etcd 官方文档](https://etcd.io/docs/)
+- [Thrift IDL 语法](https://thrift.apache.org/docs/idl)
