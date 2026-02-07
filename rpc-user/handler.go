@@ -13,6 +13,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"video-platform-microservice/rpc-user/internal/db"
 	"video-platform-microservice/rpc-user/internal/utils"
 	user "video-platform-microservice/rpc-user/kitex_gen/user"
@@ -29,16 +30,26 @@ func (s *UserServiceImpl) Register(ctx context.Context, req *user.RegisterReq) (
             Code:   500,
             Msg:    "密码加密失败",
             UserId: 0,
-        }, err
+        }, nil  // 不返回 err，避免暴露技术细节
     }
 
     userID, err := db.CreateUser(req.Username, hashedPassword)
     if err != nil {
+        // 判断是否为重复用户名错误
+        if strings.Contains(err.Error(), "Duplicate entry") || 
+           strings.Contains(err.Error(), "idx_users_username") {
+            return &user.RegisterResp{
+                Code:   400,
+                Msg:    "用户名已存在",
+                UserId: 0,
+            }, nil  // 不返回 err，避免暴露数据库错误
+        }
+        // 其他数据库错误
         return &user.RegisterResp{
-            Code:   400,
-            Msg:    "用户名可能已存在",
+            Code:   500,
+            Msg:    "注册失败，请稍后重试",
             UserId: 0,
-        }, err
+        }, nil
     }
 
     return &user.RegisterResp{
@@ -57,7 +68,7 @@ func (s *UserServiceImpl) Login(ctx context.Context, req *user.LoginReq) (resp *
             Msg:    "用户不存在",
             Token:  "",
             UserId: 0,
-        }, err
+        }, nil  // 不返回 err，避免暴露技术细节
     }
 
     if !utils.CheckPasswordHash(req.Password, existingUser.Password) {
@@ -66,7 +77,7 @@ func (s *UserServiceImpl) Login(ctx context.Context, req *user.LoginReq) (resp *
             Msg:    "密码错误",
             Token:  "",
             UserId: 0,
-        }, nil  // 注意：这里是 nil，不是 err
+        }, nil
     }
 
     return &user.LoginResp{
