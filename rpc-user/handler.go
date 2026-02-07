@@ -80,10 +80,20 @@ func (s *UserServiceImpl) Login(ctx context.Context, req *user.LoginReq) (resp *
         }, nil
     }
 
+    token, err := utils.GenerateToken(existingUser.ID, existingUser.Username)
+    if err != nil {
+        return &user.LoginResp{
+            Code:   500,
+            Msg:    "生成 Token 失败",
+            Token:  "",
+            UserId: 0,
+        }, nil
+    }
+
     return &user.LoginResp{
         Code:   200,
         Msg:    "登录成功",
-        Token:  "",  // 微服务不生成 Token，由网关生成
+        Token:  token,
         UserId: int64(existingUser.ID),
     }, nil
 }
