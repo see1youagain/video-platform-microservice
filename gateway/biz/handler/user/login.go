@@ -36,13 +36,26 @@ func LoginHandler(ctx context.Context, c *app.RequestContext) {
 	if err != nil {
 		c.JSON(consts.StatusInternalServerError, map[string]interface{}{
 			"code": 500,
-			"msg":  "RPC 调用失败: " + err.Error(),
+			"msg":  "服务暂时不可用，请稍后重试",
 		})
 		return
 	}
 
+	// 根据业务状态码返回不同的 HTTP 状态码
+	var httpStatus int
+	switch resp.Code {
+	case 200:
+		httpStatus = consts.StatusOK
+	case 401:
+		httpStatus = consts.StatusUnauthorized
+	case 404:
+		httpStatus = consts.StatusNotFound
+	default:
+		httpStatus = consts.StatusInternalServerError
+	}
+
 	// 返回响应（包含 JWT token）
-	c.JSON(consts.StatusOK, map[string]interface{}{
+	c.JSON(httpStatus, map[string]interface{}{
 		"code":    resp.Code,
 		"msg":     resp.Msg,
 		"user_id": resp.UserId,
