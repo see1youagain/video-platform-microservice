@@ -81,7 +81,6 @@ api-gateway/
 > * *Hertz 和 Kitex 在不同的进程（甚至不同的电脑）上。*
 > * *Hertz 不能直接调函数，必须通过网络发 RPC 请求给 Kitex。*
 
-
 ```plaintext
 rpc-user/
 ├── kitex_gen/          <-- 【核心】生成的 RPC 底层代码 (勿动)
@@ -169,16 +168,20 @@ rpc-user/
 **问题**：Hertz（网关）怎么知道去哪里找 `rpc-user` 服务？
 
 **传统方案（硬编码）**：
+
 ```go
 // ❌ 不好的做法
 client, _ := user.NewClient("user", client.WithHostPorts("127.0.0.1:8888"))
 ```
+
 **问题**：
+
 - 如果 `rpc-user` 重启到 `192.168.1.100:9999`，代码要改
 - 如果有3台 `rpc-user` 做负载均衡，怎么办？
 - 如果某台机器宕机了，怎么自动切换？
 
 **Etcd 方案（动态发现）**：
+
 ```go
 // ✅ 好的做法
 resolver, _ := etcd.NewEtcdResolver([]string{"127.0.0.1:2379"})
@@ -204,6 +207,7 @@ svr := user.NewServer(
 ```
 
 **Etcd 中会记录**：
+
 ```
 服务名: user
 地址: 192.168.1.10:8888
@@ -234,12 +238,13 @@ userClient, _ := user.NewClient("user", client.WithResolver(resolver))
 
 ### 为什么微服务必须要 Etcd？
 
-| 场景 | 没有 Etcd | 有 Etcd |
-|------|-----------|---------|
-| **服务地址变更** | 需要修改代码重新部署 | 自动更新，无需改代码 |
-| **服务宕机** | 请求会失败，需要手动摘除 | 自动检测并移除 |
-| **负载均衡** | 需要手动配置 Nginx | Kitex 自动轮询多个实例 |
-| **动态扩容** | 需要修改配置文件 | 新服务启动自动加入 |
+
+| 场景             | 没有 Etcd                | 有 Etcd                |
+| ---------------- | ------------------------ | ---------------------- |
+| **服务地址变更** | 需要修改代码重新部署     | 自动更新，无需改代码   |
+| **服务宕机**     | 请求会失败，需要手动摘除 | 自动检测并移除         |
+| **负载均衡**     | 需要手动配置 Nginx       | Kitex 自动轮询多个实例 |
+| **动态扩容**     | 需要修改配置文件         | 新服务启动自动加入     |
 
 ### Etcd 的替代品
 
@@ -267,6 +272,7 @@ NewServer(handler, serviceName, address, port, registry, timeout, maxConnNum, ..
 ```
 
 **问题**：
+
 - 参数太多，记不住顺序
 - 很多参数是可选的，每次都要传空值
 - 以后新增配置项，会破坏 API 兼容性
@@ -298,12 +304,12 @@ func NewServer(handler, opts ...Option) Server {
         Port: 8888,
         Timeout: 30 * time.Second,
     }
-    
+  
     // 依次应用所有配置函数
     for _, opt := range opts {
         opt(options)
     }
-    
+  
     // 使用最终的配置创建服务器
     return &server{options: options}
 }
@@ -341,27 +347,27 @@ func WithServerBasicInfo(info *rpcinfo.EndpointBasicInfo) Option {
 ```go
 svr := user.NewServer(
     new(UserServiceImpl),
-    
+  
     // 【必需】设置服务名（用于服务发现）
     server.WithServerBasicInfo(&rpcinfo.EndpointBasicInfo{
         ServiceName: "user",
     }),
-    
+  
     // 【推荐】注册到 Etcd
     server.WithRegistry(etcdRegistry),
-    
+  
     // 【可选】指定监听地址（默认随机端口）
     server.WithServiceAddr(addr),
-    
+  
     // 【可选】设置超时时间
     server.WithReadWriteTimeout(30 * time.Second),
-    
+  
     // 【可选】限制最大连接数
     server.WithLimit(&limit.Option{
         MaxConnections: 10000,
         MaxQPS:         5000,
     }),
-    
+  
     // 【可选】添加中间件
     server.WithMiddleware(func(next endpoint.Endpoint) endpoint.Endpoint {
         return func(ctx context.Context, req, resp interface{}) (err error) {
@@ -379,22 +385,22 @@ svr := user.NewServer(
 ```go
 client, err := user.NewClient(
     "user",  // 服务名
-    
+  
     // 【推荐】使用服务发现
     client.WithResolver(etcdResolver),
-    
+  
     // 【备选】直接指定地址（不推荐生产环境使用）
     // client.WithHostPorts("127.0.0.1:8888"),
-    
+  
     // 【可选】设置超时时间
     client.WithRPCTimeout(5 * time.Second),
-    
+  
     // 【可选】设置重试策略
     client.WithFailureRetry(retry.NewFailurePolicy()),
-    
+  
     // 【可选】负载均衡策略
     client.WithLoadBalancer(loadbalance.NewWeightedRandomBalancer()),
-    
+  
     // 【可选】熔断器
     client.WithCircuitBreaker(circuitbreak.NewCBSuite(...)),
 )
@@ -405,29 +411,30 @@ client, err := user.NewClient(
 #### 优点
 
 1. **可读性强**：每个配置项的名字一目了然
+
    ```go
    server.WithRegistry(r)          // 一看就知道是设置注册中心
    server.WithServiceAddr(addr)    // 一看就知道是设置监听地址
    ```
-
 2. **灵活性高**：想加什么配置就加什么，不需要的就不写
+
    ```go
    // 最简配置
    svr := user.NewServer(handler)
-   
+
    // 完整配置
    svr := user.NewServer(handler, opt1, opt2, opt3, ...)
    ```
-
 3. **向后兼容**：新增配置项不会破坏老代码
+
    ```go
    // 旧代码（只有2个配置）
    svr := user.NewServer(handler, server.WithRegistry(r))
-   
+
    // 新版本增加了 WithTracer，但旧代码依然能正常工作
    ```
-
 4. **链式调用**：代码结构清晰
+
    ```go
    client, err := user.NewClient("user",
        client.WithResolver(resolver),
@@ -441,6 +448,7 @@ client, err := user.NewClient(
 #### 场景：从开发环境迁移到生产环境
 
 **开发环境**（直连，不用 Etcd）：
+
 ```go
 svr := user.NewServer(
     new(UserServiceImpl),
@@ -452,6 +460,7 @@ svr := user.NewServer(
 ```
 
 **生产环境**（需要服务发现、限流、监控）：
+
 ```go
 svr := user.NewServer(
     new(UserServiceImpl),
@@ -519,6 +528,7 @@ svr := user.NewServer(
 ### Q2: Etcd 挂了怎么办？
 
 **答**：
+
 1. Kitex 有本地缓存，短时间内可以使用旧的服务列表
 2. 生产环境应该部署 Etcd 集群（至少3个节点）保证高可用
 3. 可以降级到硬编码地址（但会失去动态发现能力）
@@ -526,6 +536,7 @@ svr := user.NewServer(
 ### Q3: 一个服务启动多个实例，怎么负载均衡？
 
 **答**：
+
 - 所有实例注册到 Etcd 时用**同一个服务名**（如 `user`）
 - Kitex Client 会自动拿到所有实例的地址列表
 - 使用负载均衡策略选择一个实例发送请求（默认是加权随机）
@@ -553,6 +564,174 @@ server.WithServiceAddr(addr2),  // 最终使用这个
 **建议**：每种配置只写一次，避免重复。
 
 ---
+
+## JWT
+
+### 1.1 什么是 JWT？
+
+JWT (JSON Web Token) 是一个开放标准（RFC 7519），用于在各方之间安全地传输信息。
+
+**JWT 的结构：**
+
+```plaintext
+│─────────── Header ───────────│──────── Payload **──────────│─ Signature ─│
+```
+
+**三个部分：**
+
+1. **Header（头部）**: 包含算法类型（如 HS256）
+
+   **{**
+
+   **  **"alg"**: **"HS256"**,**
+
+   **  **"typ"**: **"JWT"
+
+   **}**
+2. **Payload（负载）**: 包含声明（claims），即要传输的数据
+
+   **{**
+
+   **  **"user\_id"**: **1**,**
+
+   **  **"username"**: **"test"**,**
+
+   **  **"exp"**: **1707292800**  **// 过期时间
+
+   **}**
+3. **Signature（签名）**: 用于验证 token 的完整性
+
+   **HMACSHA256(**
+
+   **  base64UrlEncode(header) + "." + base64UrlEncode(**payload),
+
+   **  secret**
+
+   **)**
+
+### 1.2 JWT 在我们项目中的作用
+
+**登录流程：**
+
+**1. 用户提交用户名+密码**
+
+**2. User 服务验证成功后生成 JWT**
+
+**3. JWT 返回给 Gateway**
+
+**4. Gateway 返回 JWT 给客户端**
+
+**5. 客户端后续请求携带 JWT**
+
+**6. Gateway 验证 JWT，提取用户信息**
+
+**7. Gateway 调用后端服务**
+
+**为什么在 User 服务生成 Token？**
+
+* ✅ 用户信息在 User 服务中，避免跨服务查询
+* ✅ Token 生成逻辑与用户认证紧密相关
+* ✅ 减少 Gateway 的职责
+
+### JWT 认证中间件
+
+#### 1.1 什么是中间件？
+
+中间件（Middleware）是一个位于**客户端请求**和**业务处理器**之间的函数，可以：
+
+* ✅ 拦截所有 HTTP 请求
+* ✅ 在请求到达业务逻辑前进行预处理（如验证 Token）
+* ✅ 决定是否继续执行后续处理
+* ✅ 修改请求上下文（如提取用户信息）
+
+**中间件执行流程：**
+
+**客户端请求**
+
+**    ↓**
+
+**中间件 **1**: 日志记录**
+
+**    ↓**
+
+**中间件 **2**: JWT 认证 ← 我们要实现的**
+
+**    ↓**
+
+**中间件 **3**: 限流保护**
+
+**    ↓**
+
+**业务处理器 **(**Handler**)
+
+**    ↓**
+
+**返回响应
+
+#### 1.2 JWT 认证中间件的职责
+
+**主要任务：**
+
+1. **提取 Token**：从 HTTP Header 中读取 `Authorization: Bearer <token>`
+2. **验证 Token**：调用 [utils.ParseToken()](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html) 验证签名和过期时间
+3. **提取用户信息**：从 Token 的 Payload 中获取 `user_id` 和 [username](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html)
+4. **注入上下文**：将用户信息存入请求上下文，供业务逻辑使用
+5. **错误处理**：Token 无效时返回 401 错误
+
+#### 1.3 为什么需要认证中间件？
+
+没有中间件，每个需要登陆的借口都需要重复提取头部、验证Token、检查错误、获取ID，如果使用中间件，直接从上下文获取用户ID即可（中间件已经被被验证）
+
+## Hertz 中间件基础知识
+
+### 2.1 中间件的基本结构
+
+在 Hertz 框架中，中间件是一个符合以下签名的函数：
+
+```go
+func MyMiddleware() app.HandlerFunc {
+    return func(ctx context.Context, c *app.RequestContext) {
+        // 请求前的处理（如验证 Token）
+    
+        c.Next(ctx)  // 调用下一个中间件或处理器
+    
+        // 请求后的处理（如记录响应时间）
+    }
+}
+```
+
+**关键点：**
+
+* [c.Next(ctx)](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html) - 继续执行后续中间件/处理器
+* 在 [c.Next(ctx)](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html) 前的代码会在**请求处理前**执行
+* 在 [c.Next(ctx)](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html) 后的代码会在**请求处理后**执行
+* 如果不调用 [c.Next(ctx)](vscode-file://vscode-app/Applications/Visual%20Studio%20Code.app/Contents/Resources/app/out/vs/code/electron-sandbox/workbench/workbench.html)，请求链会中断
+
+### 2.2 中间件的应用方式
+
+**全局中间件**（所有路由都会执行）：
+
+```go
+h := server.Default()
+h.Use(MyMiddleware())  // 全局应用
+```
+
+**路由组中间件**（只对特定路由生效）：
+
+```go
+api := h.Group("/api")
+{
+    api.POST("/login", LoginHandler)  // 不需要认证
+  
+    // 需要认证的路由组
+    protected := api.Group("/", AuthMiddleware())
+    {
+        protected.GET("/profile", GetProfileHandler)
+        protected.POST("/upload", UploadHandler)
+    }
+}
+```
+
 
 ## 学习资源
 
