@@ -23,7 +23,7 @@ func JWTAuthMiddleware() app.HandlerFunc {
 			c.Abort() // 中断请求链，停止后续处理
 			return
 		}
-		tokenString := strings.TrimPrefix(string(authHeader),"Bearer ")
+		tokenString := strings.TrimPrefix(string(authHeader), "Bearer ")
 		if tokenString == string(authHeader) {
 			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
 				"code": 401,
@@ -33,8 +33,8 @@ func JWTAuthMiddleware() app.HandlerFunc {
 			return
 		}
 		// 步骤2 验证Token
-		claims,err  := utils.ParseToken(tokenString)
-		if err!=nil {
+		claims, err := utils.ParseToken(tokenString)
+		if err != nil {
 			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
 				"code": 401,
 				"msg":  "无效的 Token",
@@ -53,7 +53,7 @@ func JWTAuthMiddleware() app.HandlerFunc {
 			return
 		}
 
-		username,ok := claims["username"].(string)
+		username, ok := claims["username"].(string)
 		if !ok {
 			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
 				"code": 401,
@@ -65,7 +65,7 @@ func JWTAuthMiddleware() app.HandlerFunc {
 		// 步骤4 注入上下文
 		c.Set("user_id", int64(userID))
 		c.Set("username", username)
-		
+
 		// 步骤5 继续执行
 		c.Next(ctx)
 	}
