@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 	"video-platform-microservice/rpc-user/conf"
+	"video-platform-microservice/rpc-user/internal/utils"
 	user "video-platform-microservice/rpc-user/kitex_gen/user/userservice"
 
 	"github.com/cloudwego/kitex/pkg/rpcinfo"
@@ -25,6 +26,11 @@ func main() {
 		log.Fatalf("数据库连接失败: %v", err)
 	}
 	log.Println("数据库连接成功")
+
+	// 🆕 初始化 JWT
+    if err := utils.InitJWT(); err != nil {
+        log.Fatalf("JWT 初始化失败: %v", err)
+    }
 
 	r, err := etcd.NewEtcdRegistry([]string{os.Getenv("ETCD_ADDRESS")})
 	if err != nil {
