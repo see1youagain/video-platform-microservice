@@ -8,7 +8,7 @@ import (
 )
 
 func GetProfileHandler(ctx context.Context, c *app.RequestContext) {
-	userID,existed := c.Get("user_id")
+	userID, existed := c.Get("user_id")
 	if !existed {
 		c.JSON(401, map[string]interface{}{
 			"code": 401,
@@ -25,8 +25,8 @@ func GetProfileHandler(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 	c.JSON(consts.StatusOK, map[string]interface{}{
-		"code":     200,
-		"msg":      "获取用户信息成功",
+		"code": 200,
+		"msg":  "获取用户信息成功",
 		"data": map[string]interface{}{
 			"user_id":  userID,
 			"username": username,

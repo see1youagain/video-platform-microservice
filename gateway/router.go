@@ -10,19 +10,24 @@ import (
 
 // customizeRegister registers customize routers.
 func customizedRegister(r *server.Hertz) {
+	// 全局中间件：请求追踪 ID
+	r.Use(middleware.TraceIDMiddleware())
+
 	r.GET("/ping", handler.Ping)
 
 	// API 路由组
 	api := r.Group("/api")
 	{
-		// 用户相关路由
+		// 用户相关路由（无需认证）
 		api.POST("/register", userHandler.RegisterHandler)
 		api.POST("/login", userHandler.LoginHandler)
+
+		// 需要认证的路由组
 		protected := api.Group("/", middleware.JWTAuthMiddleware())
 		{
-			// TODO: 后续添加需要登录的接口
-            protected.GET("/profile", userHandler.GetProfileHandler)
-            // protected.POST("/upload", videoHandler.UploadHandler)
+			protected.GET("/profile", userHandler.GetProfileHandler)
+			// 后续添加更多需要认证的接口
+			// protected.POST("/upload", videoHandler.UploadHandler)
 		}
 	}
 }

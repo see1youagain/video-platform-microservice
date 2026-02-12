@@ -30,3 +30,14 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+# 编译产物
+gateway/gateway_test
+rpc-user/rpc-user-test
+*.test
+*.out
+
+# 日志文件
+*.log
+
+# 环境变量（如果还没加）
+.env
