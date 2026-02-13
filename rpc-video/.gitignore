@@ -1,0 +1,21 @@
+# 二进制文件
+rpc-video
+*.exe
+
+# 依赖和缓存
+vendor/
+
+# IDE
+.vscode/
+.idea/
+
+# 环境配置（可选，根据需要调整）
+# .env
+
+# 日志文件
+*.log
+
+# 临时文件
+*.swp
+*.swo
+*~
