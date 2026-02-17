@@ -8,6 +8,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/joho/godotenv v1.5.1
 	github.com/kitex-contrib/registry-etcd v0.3.0
+	github.com/see1youagain/video-platform-microservice/common v0.0.0
 	golang.org/x/crypto v0.36.0
 	gorm.io/driver/mysql v1.6.0
 	gorm.io/gorm v1.31.1
@@ -54,7 +55,7 @@ require (
 	go.etcd.io/etcd/client/pkg/v3 v3.6.2 // indirect
 	go.etcd.io/etcd/client/v3 v3.6.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/arch v0.14.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect
@@ -67,3 +68,5 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/see1youagain/video-platform-microservice/common => ../common

@@ -3,6 +3,7 @@ package main
 import (
 	handler "video-platform-microservice/gateway/biz/handler"
 	userHandler "video-platform-microservice/gateway/biz/handler/user"
+	videoHandler "video-platform-microservice/gateway/biz/handler/video"
 	"video-platform-microservice/gateway/biz/middleware"
 
 	"github.com/cloudwego/hertz/pkg/app/server"
@@ -25,9 +26,15 @@ func customizedRegister(r *server.Hertz) {
 		// 需要认证的路由组
 		protected := api.Group("/", middleware.JWTAuthMiddleware())
 		{
+			// 用户相关
 			protected.GET("/profile", userHandler.GetProfileHandler)
-			// 后续添加更多需要认证的接口
-			// protected.POST("/upload", videoHandler.UploadHandler)
+
+			// 视频上传相关
+			protected.POST("/video/init", videoHandler.InitUploadHandler)       // 初始化上传
+			protected.POST("/video/chunk", videoHandler.UploadChunkHandler)     // 上传分片
+			protected.POST("/video/merge", videoHandler.MergeFileHandler)       // 合并文件
+			protected.POST("/video/upload", videoHandler.SimpleUploadHandler)   // 简单上传
+			protected.POST("/video/hash", videoHandler.CalculateFileHashHandler) // 计算 Hash
 		}
 	}
 }

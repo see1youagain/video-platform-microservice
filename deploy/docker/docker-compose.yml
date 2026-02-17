@@ -1,0 +1,129 @@
+version: '3.7'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: video-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: video_platform
+      MYSQL_USER: video_user
+      MYSQL_PASSWORD: video_password
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+    networks:
+      - video-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: video-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      timeout: 3s
+      retries: 5
+    networks:
+      - video-network
+
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: video-etcd
+    environment:
+      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
+      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd-data:/etcd-data
+    healthcheck:
+      test: [ "CMD", "etcdctl", "--endpoints=localhost:2379", "endpoint", "health" ]
+      timeout: 3s
+      retries: 5
+    networks:
+      - video-network
+
+  rpc-user:
+    build:
+      context: ../..
+      dockerfile: rpc-user/Dockerfile
+    container_name: video-rpc-user
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: video_user
+      DB_PASSWORD: video_password
+      DB_NAME: video_platform
+      REDIS_ADDR: redis:6379
+      ETCD_ADDRESS: etcd:2379
+      JWT_SECRET: "your-secret-key-min-32-characters-long!!!"
+      LOG_LEVEL: info
+    ports:
+      - "8888:8888"
+    depends_on:
+      - mysql
+      - redis
+      - etcd
+    networks:
+      - video-network
+
+  rpc-video:
+    build:
+      context: ../..
+      dockerfile: rpc-video/Dockerfile
+    container_name: video-rpc-video
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: video_user
+      DB_PASSWORD: video_password
+      DB_NAME: video_platform
+      REDIS_ADDR: redis:6379
+      ETCD_ADDRESS: etcd:2379
+      LOG_LEVEL: info
+    ports:
+      - "8889:8889"
+    depends_on:
+      - mysql
+      - redis
+      - etcd
+    volumes:
+      - video-storage:/app/storage
+    networks:
+      - video-network
+
+  gateway:
+    build:
+      context: ../..
+      dockerfile: gateway/Dockerfile
+    container_name: video-gateway
+    environment:
+      ETCD_ADDRESS: etcd:2379
+      JWT_SECRET: "your-secret-key-min-32-characters-long!!!"
+      LOG_LEVEL: info
+    ports:
+      - "8080:8080"
+    depends_on:
+      - rpc-user
+      - rpc-video
+    networks:
+      - video-network
+
+volumes:
+  mysql-data:
+  redis-data:
+  etcd-data:
+  video-storage:
+
+
+networks:
+  video-network:
+    driver: bridge
