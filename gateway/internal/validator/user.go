@@ -1,9 +1,9 @@
 package validator
 
 import (
-"errors"
-"regexp"
-"unicode/utf8"
+	"errors"
+	"regexp"
+	"unicode/utf8"
 )
 
 // ValidateUsername 验证用户名

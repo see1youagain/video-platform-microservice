@@ -10,8 +10,6 @@ require (
 	github.com/kitex-contrib/registry-etcd v0.3.0
 	github.com/see1youagain/video-platform-microservice/common v0.0.0
 	golang.org/x/crypto v0.36.0
-	gorm.io/driver/mysql v1.6.0
-	gorm.io/gorm v1.31.1
 )
 
 require (
@@ -67,6 +65,8 @@ require (
 	google.golang.org/grpc v1.71.1 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	gorm.io/driver/mysql v1.6.0 // indirect
+	gorm.io/gorm v1.31.1 // indirect
 )
 
 replace github.com/see1youagain/video-platform-microservice/common => ../common

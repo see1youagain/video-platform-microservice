@@ -6,7 +6,7 @@ import (
 	"video-platform-microservice/gateway/internal/logger"
 	"video-platform-microservice/gateway/internal/validator"
 	"video-platform-microservice/gateway/rpc"
-	video "video-platform-microservice/rpc-video/kitex_gen/video"
+	video "video-platform-microservice/gateway/kitex_gen/video"
 
 	"github.com/cloudwego/hertz/pkg/app"
 	"github.com/cloudwego/hertz/pkg/protocol/consts"

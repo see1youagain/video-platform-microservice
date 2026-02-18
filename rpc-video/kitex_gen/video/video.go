@@ -8,8 +8,13 @@ import (
 )
 
 type InitUploadReq struct {
-	FileHash string `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
-	Filename string `thrift:"filename,2" frugal:"2,default,string" json:"filename"`
+	FileHash  string `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
+	Filename  string `thrift:"filename,2" frugal:"2,default,string" json:"filename"`
+	FileSize  int64  `thrift:"file_size,3" frugal:"3,default,i64" json:"file_size"`
+	UserId    string `thrift:"user_id,4" frugal:"4,default,string" json:"user_id"`
+	Width     int32  `thrift:"width,5" frugal:"5,default,i32" json:"width"`
+	Height    int32  `thrift:"height,6" frugal:"6,default,i32" json:"height"`
+	RequestId string `thrift:"request_id,7" frugal:"7,default,string" json:"request_id"`
 }
 
 func NewInitUploadReq() *InitUploadReq {
@@ -26,11 +31,46 @@ func (p *InitUploadReq) GetFileHash() (v string) {
 func (p *InitUploadReq) GetFilename() (v string) {
 	return p.Filename
 }
+
+func (p *InitUploadReq) GetFileSize() (v int64) {
+	return p.FileSize
+}
+
+func (p *InitUploadReq) GetUserId() (v string) {
+	return p.UserId
+}
+
+func (p *InitUploadReq) GetWidth() (v int32) {
+	return p.Width
+}
+
+func (p *InitUploadReq) GetHeight() (v int32) {
+	return p.Height
+}
+
+func (p *InitUploadReq) GetRequestId() (v string) {
+	return p.RequestId
+}
 func (p *InitUploadReq) SetFileHash(val string) {
 	p.FileHash = val
 }
 func (p *InitUploadReq) SetFilename(val string) {
 	p.Filename = val
+}
+func (p *InitUploadReq) SetFileSize(val int64) {
+	p.FileSize = val
+}
+func (p *InitUploadReq) SetUserId(val string) {
+	p.UserId = val
+}
+func (p *InitUploadReq) SetWidth(val int32) {
+	p.Width = val
+}
+func (p *InitUploadReq) SetHeight(val int32) {
+	p.Height = val
+}
+func (p *InitUploadReq) SetRequestId(val string) {
+	p.RequestId = val
 }
 
 func (p *InitUploadReq) String() string {
@@ -43,6 +83,11 @@ func (p *InitUploadReq) String() string {
 var fieldIDToName_InitUploadReq = map[int16]string{
 	1: "file_hash",
 	2: "filename",
+	3: "file_size",
+	4: "user_id",
+	5: "width",
+	6: "height",
+	7: "request_id",
 }
 
 type InitUploadResp struct {
@@ -114,6 +159,7 @@ type UploadChunkReq struct {
 	FileHash string `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
 	Index    string `thrift:"index,2" frugal:"2,default,string" json:"index"`
 	Data     []byte `thrift:"data,3" frugal:"3,default,binary" json:"data"`
+	UserId   string `thrift:"user_id,4" frugal:"4,default,string" json:"user_id"`
 }
 
 func NewUploadChunkReq() *UploadChunkReq {
@@ -134,6 +180,10 @@ func (p *UploadChunkReq) GetIndex() (v string) {
 func (p *UploadChunkReq) GetData() (v []byte) {
 	return p.Data
 }
+
+func (p *UploadChunkReq) GetUserId() (v string) {
+	return p.UserId
+}
 func (p *UploadChunkReq) SetFileHash(val string) {
 	p.FileHash = val
 }
@@ -142,6 +192,9 @@ func (p *UploadChunkReq) SetIndex(val string) {
 }
 func (p *UploadChunkReq) SetData(val []byte) {
 	p.Data = val
+}
+func (p *UploadChunkReq) SetUserId(val string) {
+	p.UserId = val
 }
 
 func (p *UploadChunkReq) String() string {
@@ -155,6 +208,7 @@ var fieldIDToName_UploadChunkReq = map[int16]string{
 	1: "file_hash",
 	2: "index",
 	3: "data",
+	4: "user_id",
 }
 
 type UploadChunkResp struct {
@@ -199,6 +253,10 @@ type MergeFileReq struct {
 	FileHash    string `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
 	Filename    string `thrift:"filename,2" frugal:"2,default,string" json:"filename"`
 	TotalChunks int32  `thrift:"total_chunks,3" frugal:"3,default,i32" json:"total_chunks"`
+	UserId      string `thrift:"user_id,4" frugal:"4,default,string" json:"user_id"`
+	Width       int32  `thrift:"width,5" frugal:"5,default,i32" json:"width"`
+	Height      int32  `thrift:"height,6" frugal:"6,default,i32" json:"height"`
+	RequestId   string `thrift:"request_id,7" frugal:"7,default,string" json:"request_id"`
 }
 
 func NewMergeFileReq() *MergeFileReq {
@@ -219,6 +277,22 @@ func (p *MergeFileReq) GetFilename() (v string) {
 func (p *MergeFileReq) GetTotalChunks() (v int32) {
 	return p.TotalChunks
 }
+
+func (p *MergeFileReq) GetUserId() (v string) {
+	return p.UserId
+}
+
+func (p *MergeFileReq) GetWidth() (v int32) {
+	return p.Width
+}
+
+func (p *MergeFileReq) GetHeight() (v int32) {
+	return p.Height
+}
+
+func (p *MergeFileReq) GetRequestId() (v string) {
+	return p.RequestId
+}
 func (p *MergeFileReq) SetFileHash(val string) {
 	p.FileHash = val
 }
@@ -227,6 +301,18 @@ func (p *MergeFileReq) SetFilename(val string) {
 }
 func (p *MergeFileReq) SetTotalChunks(val int32) {
 	p.TotalChunks = val
+}
+func (p *MergeFileReq) SetUserId(val string) {
+	p.UserId = val
+}
+func (p *MergeFileReq) SetWidth(val int32) {
+	p.Width = val
+}
+func (p *MergeFileReq) SetHeight(val int32) {
+	p.Height = val
+}
+func (p *MergeFileReq) SetRequestId(val string) {
+	p.RequestId = val
 }
 
 func (p *MergeFileReq) String() string {
@@ -240,6 +326,10 @@ var fieldIDToName_MergeFileReq = map[int16]string{
 	1: "file_hash",
 	2: "filename",
 	3: "total_chunks",
+	4: "user_id",
+	5: "width",
+	6: "height",
+	7: "request_id",
 }
 
 type MergeFileResp struct {
@@ -289,12 +379,477 @@ var fieldIDToName_MergeFileResp = map[int16]string{
 	3: "url",
 }
 
+type DownloadChunkReq struct {
+	FileHash   string `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
+	ChunkIndex int32  `thrift:"chunk_index,2" frugal:"2,default,i32" json:"chunk_index"`
+	StartByte  int64  `thrift:"start_byte,3" frugal:"3,default,i64" json:"start_byte"`
+	EndByte    int64  `thrift:"end_byte,4" frugal:"4,default,i64" json:"end_byte"`
+}
+
+func NewDownloadChunkReq() *DownloadChunkReq {
+	return &DownloadChunkReq{}
+}
+
+func (p *DownloadChunkReq) InitDefault() {
+}
+
+func (p *DownloadChunkReq) GetFileHash() (v string) {
+	return p.FileHash
+}
+
+func (p *DownloadChunkReq) GetChunkIndex() (v int32) {
+	return p.ChunkIndex
+}
+
+func (p *DownloadChunkReq) GetStartByte() (v int64) {
+	return p.StartByte
+}
+
+func (p *DownloadChunkReq) GetEndByte() (v int64) {
+	return p.EndByte
+}
+func (p *DownloadChunkReq) SetFileHash(val string) {
+	p.FileHash = val
+}
+func (p *DownloadChunkReq) SetChunkIndex(val int32) {
+	p.ChunkIndex = val
+}
+func (p *DownloadChunkReq) SetStartByte(val int64) {
+	p.StartByte = val
+}
+func (p *DownloadChunkReq) SetEndByte(val int64) {
+	p.EndByte = val
+}
+
+func (p *DownloadChunkReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("DownloadChunkReq(%+v)", *p)
+}
+
+var fieldIDToName_DownloadChunkReq = map[int16]string{
+	1: "file_hash",
+	2: "chunk_index",
+	3: "start_byte",
+	4: "end_byte",
+}
+
+type DownloadChunkResp struct {
+	Code      int32  `thrift:"code,1" frugal:"1,default,i32" json:"code"`
+	Msg       string `thrift:"msg,2" frugal:"2,default,string" json:"msg"`
+	Data      []byte `thrift:"data,3" frugal:"3,default,binary" json:"data"`
+	TotalSize int64  `thrift:"total_size,4" frugal:"4,default,i64" json:"total_size"`
+}
+
+func NewDownloadChunkResp() *DownloadChunkResp {
+	return &DownloadChunkResp{}
+}
+
+func (p *DownloadChunkResp) InitDefault() {
+}
+
+func (p *DownloadChunkResp) GetCode() (v int32) {
+	return p.Code
+}
+
+func (p *DownloadChunkResp) GetMsg() (v string) {
+	return p.Msg
+}
+
+func (p *DownloadChunkResp) GetData() (v []byte) {
+	return p.Data
+}
+
+func (p *DownloadChunkResp) GetTotalSize() (v int64) {
+	return p.TotalSize
+}
+func (p *DownloadChunkResp) SetCode(val int32) {
+	p.Code = val
+}
+func (p *DownloadChunkResp) SetMsg(val string) {
+	p.Msg = val
+}
+func (p *DownloadChunkResp) SetData(val []byte) {
+	p.Data = val
+}
+func (p *DownloadChunkResp) SetTotalSize(val int64) {
+	p.TotalSize = val
+}
+
+func (p *DownloadChunkResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("DownloadChunkResp(%+v)", *p)
+}
+
+var fieldIDToName_DownloadChunkResp = map[int16]string{
+	1: "code",
+	2: "msg",
+	3: "data",
+	4: "total_size",
+}
+
+type GetVideoInfoReq struct {
+	FileHash string `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
+	UserId   string `thrift:"user_id,2" frugal:"2,default,string" json:"user_id"`
+}
+
+func NewGetVideoInfoReq() *GetVideoInfoReq {
+	return &GetVideoInfoReq{}
+}
+
+func (p *GetVideoInfoReq) InitDefault() {
+}
+
+func (p *GetVideoInfoReq) GetFileHash() (v string) {
+	return p.FileHash
+}
+
+func (p *GetVideoInfoReq) GetUserId() (v string) {
+	return p.UserId
+}
+func (p *GetVideoInfoReq) SetFileHash(val string) {
+	p.FileHash = val
+}
+func (p *GetVideoInfoReq) SetUserId(val string) {
+	p.UserId = val
+}
+
+func (p *GetVideoInfoReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("GetVideoInfoReq(%+v)", *p)
+}
+
+var fieldIDToName_GetVideoInfoReq = map[int16]string{
+	1: "file_hash",
+	2: "user_id",
+}
+
+type GetVideoInfoResp struct {
+	Code            int32    `thrift:"code,1" frugal:"1,default,i32" json:"code"`
+	Msg             string   `thrift:"msg,2" frugal:"2,default,string" json:"msg"`
+	FileHash        string   `thrift:"file_hash,3" frugal:"3,default,string" json:"file_hash"`
+	Filename        string   `thrift:"filename,4" frugal:"4,default,string" json:"filename"`
+	FileSize        int64    `thrift:"file_size,5" frugal:"5,default,i64" json:"file_size"`
+	Width           int32    `thrift:"width,6" frugal:"6,default,i32" json:"width"`
+	Height          int32    `thrift:"height,7" frugal:"7,default,i32" json:"height"`
+	Url             string   `thrift:"url,8" frugal:"8,default,string" json:"url"`
+	TranscodeUrls   []string `thrift:"transcode_urls,9" frugal:"9,default,list<string>" json:"transcode_urls"`
+	TranscodeStatus string   `thrift:"transcode_status,10" frugal:"10,default,string" json:"transcode_status"`
+}
+
+func NewGetVideoInfoResp() *GetVideoInfoResp {
+	return &GetVideoInfoResp{}
+}
+
+func (p *GetVideoInfoResp) InitDefault() {
+}
+
+func (p *GetVideoInfoResp) GetCode() (v int32) {
+	return p.Code
+}
+
+func (p *GetVideoInfoResp) GetMsg() (v string) {
+	return p.Msg
+}
+
+func (p *GetVideoInfoResp) GetFileHash() (v string) {
+	return p.FileHash
+}
+
+func (p *GetVideoInfoResp) GetFilename() (v string) {
+	return p.Filename
+}
+
+func (p *GetVideoInfoResp) GetFileSize() (v int64) {
+	return p.FileSize
+}
+
+func (p *GetVideoInfoResp) GetWidth() (v int32) {
+	return p.Width
+}
+
+func (p *GetVideoInfoResp) GetHeight() (v int32) {
+	return p.Height
+}
+
+func (p *GetVideoInfoResp) GetUrl() (v string) {
+	return p.Url
+}
+
+func (p *GetVideoInfoResp) GetTranscodeUrls() (v []string) {
+	return p.TranscodeUrls
+}
+
+func (p *GetVideoInfoResp) GetTranscodeStatus() (v string) {
+	return p.TranscodeStatus
+}
+func (p *GetVideoInfoResp) SetCode(val int32) {
+	p.Code = val
+}
+func (p *GetVideoInfoResp) SetMsg(val string) {
+	p.Msg = val
+}
+func (p *GetVideoInfoResp) SetFileHash(val string) {
+	p.FileHash = val
+}
+func (p *GetVideoInfoResp) SetFilename(val string) {
+	p.Filename = val
+}
+func (p *GetVideoInfoResp) SetFileSize(val int64) {
+	p.FileSize = val
+}
+func (p *GetVideoInfoResp) SetWidth(val int32) {
+	p.Width = val
+}
+func (p *GetVideoInfoResp) SetHeight(val int32) {
+	p.Height = val
+}
+func (p *GetVideoInfoResp) SetUrl(val string) {
+	p.Url = val
+}
+func (p *GetVideoInfoResp) SetTranscodeUrls(val []string) {
+	p.TranscodeUrls = val
+}
+func (p *GetVideoInfoResp) SetTranscodeStatus(val string) {
+	p.TranscodeStatus = val
+}
+
+func (p *GetVideoInfoResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("GetVideoInfoResp(%+v)", *p)
+}
+
+var fieldIDToName_GetVideoInfoResp = map[int16]string{
+	1:  "code",
+	2:  "msg",
+	3:  "file_hash",
+	4:  "filename",
+	5:  "file_size",
+	6:  "width",
+	7:  "height",
+	8:  "url",
+	9:  "transcode_urls",
+	10: "transcode_status",
+}
+
+type TranscodeReq struct {
+	FileHash    string   `thrift:"file_hash,1" frugal:"1,default,string" json:"file_hash"`
+	UserId      string   `thrift:"user_id,2" frugal:"2,default,string" json:"user_id"`
+	Resolutions []string `thrift:"resolutions,3" frugal:"3,default,list<string>" json:"resolutions"`
+	RequestId   string   `thrift:"request_id,4" frugal:"4,default,string" json:"request_id"`
+}
+
+func NewTranscodeReq() *TranscodeReq {
+	return &TranscodeReq{}
+}
+
+func (p *TranscodeReq) InitDefault() {
+}
+
+func (p *TranscodeReq) GetFileHash() (v string) {
+	return p.FileHash
+}
+
+func (p *TranscodeReq) GetUserId() (v string) {
+	return p.UserId
+}
+
+func (p *TranscodeReq) GetResolutions() (v []string) {
+	return p.Resolutions
+}
+
+func (p *TranscodeReq) GetRequestId() (v string) {
+	return p.RequestId
+}
+func (p *TranscodeReq) SetFileHash(val string) {
+	p.FileHash = val
+}
+func (p *TranscodeReq) SetUserId(val string) {
+	p.UserId = val
+}
+func (p *TranscodeReq) SetResolutions(val []string) {
+	p.Resolutions = val
+}
+func (p *TranscodeReq) SetRequestId(val string) {
+	p.RequestId = val
+}
+
+func (p *TranscodeReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("TranscodeReq(%+v)", *p)
+}
+
+var fieldIDToName_TranscodeReq = map[int16]string{
+	1: "file_hash",
+	2: "user_id",
+	3: "resolutions",
+	4: "request_id",
+}
+
+type TranscodeResp struct {
+	Code   int32  `thrift:"code,1" frugal:"1,default,i32" json:"code"`
+	Msg    string `thrift:"msg,2" frugal:"2,default,string" json:"msg"`
+	TaskId string `thrift:"task_id,3" frugal:"3,default,string" json:"task_id"`
+}
+
+func NewTranscodeResp() *TranscodeResp {
+	return &TranscodeResp{}
+}
+
+func (p *TranscodeResp) InitDefault() {
+}
+
+func (p *TranscodeResp) GetCode() (v int32) {
+	return p.Code
+}
+
+func (p *TranscodeResp) GetMsg() (v string) {
+	return p.Msg
+}
+
+func (p *TranscodeResp) GetTaskId() (v string) {
+	return p.TaskId
+}
+func (p *TranscodeResp) SetCode(val int32) {
+	p.Code = val
+}
+func (p *TranscodeResp) SetMsg(val string) {
+	p.Msg = val
+}
+func (p *TranscodeResp) SetTaskId(val string) {
+	p.TaskId = val
+}
+
+func (p *TranscodeResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("TranscodeResp(%+v)", *p)
+}
+
+var fieldIDToName_TranscodeResp = map[int16]string{
+	1: "code",
+	2: "msg",
+	3: "task_id",
+}
+
+type GetTranscodeStatusReq struct {
+	TaskId string `thrift:"task_id,1" frugal:"1,default,string" json:"task_id"`
+}
+
+func NewGetTranscodeStatusReq() *GetTranscodeStatusReq {
+	return &GetTranscodeStatusReq{}
+}
+
+func (p *GetTranscodeStatusReq) InitDefault() {
+}
+
+func (p *GetTranscodeStatusReq) GetTaskId() (v string) {
+	return p.TaskId
+}
+func (p *GetTranscodeStatusReq) SetTaskId(val string) {
+	p.TaskId = val
+}
+
+func (p *GetTranscodeStatusReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("GetTranscodeStatusReq(%+v)", *p)
+}
+
+var fieldIDToName_GetTranscodeStatusReq = map[int16]string{
+	1: "task_id",
+}
+
+type GetTranscodeStatusResp struct {
+	Code          int32    `thrift:"code,1" frugal:"1,default,i32" json:"code"`
+	Msg           string   `thrift:"msg,2" frugal:"2,default,string" json:"msg"`
+	Status        string   `thrift:"status,3" frugal:"3,default,string" json:"status"`
+	Progress      int32    `thrift:"progress,4" frugal:"4,default,i32" json:"progress"`
+	CompletedUrls []string `thrift:"completed_urls,5" frugal:"5,default,list<string>" json:"completed_urls"`
+}
+
+func NewGetTranscodeStatusResp() *GetTranscodeStatusResp {
+	return &GetTranscodeStatusResp{}
+}
+
+func (p *GetTranscodeStatusResp) InitDefault() {
+}
+
+func (p *GetTranscodeStatusResp) GetCode() (v int32) {
+	return p.Code
+}
+
+func (p *GetTranscodeStatusResp) GetMsg() (v string) {
+	return p.Msg
+}
+
+func (p *GetTranscodeStatusResp) GetStatus() (v string) {
+	return p.Status
+}
+
+func (p *GetTranscodeStatusResp) GetProgress() (v int32) {
+	return p.Progress
+}
+
+func (p *GetTranscodeStatusResp) GetCompletedUrls() (v []string) {
+	return p.CompletedUrls
+}
+func (p *GetTranscodeStatusResp) SetCode(val int32) {
+	p.Code = val
+}
+func (p *GetTranscodeStatusResp) SetMsg(val string) {
+	p.Msg = val
+}
+func (p *GetTranscodeStatusResp) SetStatus(val string) {
+	p.Status = val
+}
+func (p *GetTranscodeStatusResp) SetProgress(val int32) {
+	p.Progress = val
+}
+func (p *GetTranscodeStatusResp) SetCompletedUrls(val []string) {
+	p.CompletedUrls = val
+}
+
+func (p *GetTranscodeStatusResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("GetTranscodeStatusResp(%+v)", *p)
+}
+
+var fieldIDToName_GetTranscodeStatusResp = map[int16]string{
+	1: "code",
+	2: "msg",
+	3: "status",
+	4: "progress",
+	5: "completed_urls",
+}
+
 type VideoService interface {
 	InitUpload(ctx context.Context, req *InitUploadReq) (r *InitUploadResp, err error)
 
 	UploadChunk(ctx context.Context, req *UploadChunkReq) (r *UploadChunkResp, err error)
 
 	MergeFile(ctx context.Context, req *MergeFileReq) (r *MergeFileResp, err error)
+
+	DownloadChunk(ctx context.Context, req *DownloadChunkReq) (r *DownloadChunkResp, err error)
+
+	GetVideoInfo(ctx context.Context, req *GetVideoInfoReq) (r *GetVideoInfoResp, err error)
+
+	Transcode(ctx context.Context, req *TranscodeReq) (r *TranscodeResp, err error)
+
+	GetTranscodeStatus(ctx context.Context, req *GetTranscodeStatusReq) (r *GetTranscodeStatusResp, err error)
 }
 
 type VideoServiceInitUploadArgs struct {
@@ -522,5 +1077,309 @@ func (p *VideoServiceMergeFileResult) String() string {
 }
 
 var fieldIDToName_VideoServiceMergeFileResult = map[int16]string{
+	0: "success",
+}
+
+type VideoServiceDownloadChunkArgs struct {
+	Req *DownloadChunkReq `thrift:"req,1" frugal:"1,default,DownloadChunkReq" json:"req"`
+}
+
+func NewVideoServiceDownloadChunkArgs() *VideoServiceDownloadChunkArgs {
+	return &VideoServiceDownloadChunkArgs{}
+}
+
+func (p *VideoServiceDownloadChunkArgs) InitDefault() {
+}
+
+var VideoServiceDownloadChunkArgs_Req_DEFAULT *DownloadChunkReq
+
+func (p *VideoServiceDownloadChunkArgs) GetReq() (v *DownloadChunkReq) {
+	if !p.IsSetReq() {
+		return VideoServiceDownloadChunkArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *VideoServiceDownloadChunkArgs) SetReq(val *DownloadChunkReq) {
+	p.Req = val
+}
+
+func (p *VideoServiceDownloadChunkArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *VideoServiceDownloadChunkArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceDownloadChunkArgs(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceDownloadChunkArgs = map[int16]string{
+	1: "req",
+}
+
+type VideoServiceDownloadChunkResult struct {
+	Success *DownloadChunkResp `thrift:"success,0,optional" frugal:"0,optional,DownloadChunkResp" json:"success,omitempty"`
+}
+
+func NewVideoServiceDownloadChunkResult() *VideoServiceDownloadChunkResult {
+	return &VideoServiceDownloadChunkResult{}
+}
+
+func (p *VideoServiceDownloadChunkResult) InitDefault() {
+}
+
+var VideoServiceDownloadChunkResult_Success_DEFAULT *DownloadChunkResp
+
+func (p *VideoServiceDownloadChunkResult) GetSuccess() (v *DownloadChunkResp) {
+	if !p.IsSetSuccess() {
+		return VideoServiceDownloadChunkResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *VideoServiceDownloadChunkResult) SetSuccess(x interface{}) {
+	p.Success = x.(*DownloadChunkResp)
+}
+
+func (p *VideoServiceDownloadChunkResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *VideoServiceDownloadChunkResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceDownloadChunkResult(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceDownloadChunkResult = map[int16]string{
+	0: "success",
+}
+
+type VideoServiceGetVideoInfoArgs struct {
+	Req *GetVideoInfoReq `thrift:"req,1" frugal:"1,default,GetVideoInfoReq" json:"req"`
+}
+
+func NewVideoServiceGetVideoInfoArgs() *VideoServiceGetVideoInfoArgs {
+	return &VideoServiceGetVideoInfoArgs{}
+}
+
+func (p *VideoServiceGetVideoInfoArgs) InitDefault() {
+}
+
+var VideoServiceGetVideoInfoArgs_Req_DEFAULT *GetVideoInfoReq
+
+func (p *VideoServiceGetVideoInfoArgs) GetReq() (v *GetVideoInfoReq) {
+	if !p.IsSetReq() {
+		return VideoServiceGetVideoInfoArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *VideoServiceGetVideoInfoArgs) SetReq(val *GetVideoInfoReq) {
+	p.Req = val
+}
+
+func (p *VideoServiceGetVideoInfoArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *VideoServiceGetVideoInfoArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceGetVideoInfoArgs(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceGetVideoInfoArgs = map[int16]string{
+	1: "req",
+}
+
+type VideoServiceGetVideoInfoResult struct {
+	Success *GetVideoInfoResp `thrift:"success,0,optional" frugal:"0,optional,GetVideoInfoResp" json:"success,omitempty"`
+}
+
+func NewVideoServiceGetVideoInfoResult() *VideoServiceGetVideoInfoResult {
+	return &VideoServiceGetVideoInfoResult{}
+}
+
+func (p *VideoServiceGetVideoInfoResult) InitDefault() {
+}
+
+var VideoServiceGetVideoInfoResult_Success_DEFAULT *GetVideoInfoResp
+
+func (p *VideoServiceGetVideoInfoResult) GetSuccess() (v *GetVideoInfoResp) {
+	if !p.IsSetSuccess() {
+		return VideoServiceGetVideoInfoResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *VideoServiceGetVideoInfoResult) SetSuccess(x interface{}) {
+	p.Success = x.(*GetVideoInfoResp)
+}
+
+func (p *VideoServiceGetVideoInfoResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *VideoServiceGetVideoInfoResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceGetVideoInfoResult(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceGetVideoInfoResult = map[int16]string{
+	0: "success",
+}
+
+type VideoServiceTranscodeArgs struct {
+	Req *TranscodeReq `thrift:"req,1" frugal:"1,default,TranscodeReq" json:"req"`
+}
+
+func NewVideoServiceTranscodeArgs() *VideoServiceTranscodeArgs {
+	return &VideoServiceTranscodeArgs{}
+}
+
+func (p *VideoServiceTranscodeArgs) InitDefault() {
+}
+
+var VideoServiceTranscodeArgs_Req_DEFAULT *TranscodeReq
+
+func (p *VideoServiceTranscodeArgs) GetReq() (v *TranscodeReq) {
+	if !p.IsSetReq() {
+		return VideoServiceTranscodeArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *VideoServiceTranscodeArgs) SetReq(val *TranscodeReq) {
+	p.Req = val
+}
+
+func (p *VideoServiceTranscodeArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *VideoServiceTranscodeArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceTranscodeArgs(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceTranscodeArgs = map[int16]string{
+	1: "req",
+}
+
+type VideoServiceTranscodeResult struct {
+	Success *TranscodeResp `thrift:"success,0,optional" frugal:"0,optional,TranscodeResp" json:"success,omitempty"`
+}
+
+func NewVideoServiceTranscodeResult() *VideoServiceTranscodeResult {
+	return &VideoServiceTranscodeResult{}
+}
+
+func (p *VideoServiceTranscodeResult) InitDefault() {
+}
+
+var VideoServiceTranscodeResult_Success_DEFAULT *TranscodeResp
+
+func (p *VideoServiceTranscodeResult) GetSuccess() (v *TranscodeResp) {
+	if !p.IsSetSuccess() {
+		return VideoServiceTranscodeResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *VideoServiceTranscodeResult) SetSuccess(x interface{}) {
+	p.Success = x.(*TranscodeResp)
+}
+
+func (p *VideoServiceTranscodeResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *VideoServiceTranscodeResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceTranscodeResult(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceTranscodeResult = map[int16]string{
+	0: "success",
+}
+
+type VideoServiceGetTranscodeStatusArgs struct {
+	Req *GetTranscodeStatusReq `thrift:"req,1" frugal:"1,default,GetTranscodeStatusReq" json:"req"`
+}
+
+func NewVideoServiceGetTranscodeStatusArgs() *VideoServiceGetTranscodeStatusArgs {
+	return &VideoServiceGetTranscodeStatusArgs{}
+}
+
+func (p *VideoServiceGetTranscodeStatusArgs) InitDefault() {
+}
+
+var VideoServiceGetTranscodeStatusArgs_Req_DEFAULT *GetTranscodeStatusReq
+
+func (p *VideoServiceGetTranscodeStatusArgs) GetReq() (v *GetTranscodeStatusReq) {
+	if !p.IsSetReq() {
+		return VideoServiceGetTranscodeStatusArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *VideoServiceGetTranscodeStatusArgs) SetReq(val *GetTranscodeStatusReq) {
+	p.Req = val
+}
+
+func (p *VideoServiceGetTranscodeStatusArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *VideoServiceGetTranscodeStatusArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceGetTranscodeStatusArgs(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceGetTranscodeStatusArgs = map[int16]string{
+	1: "req",
+}
+
+type VideoServiceGetTranscodeStatusResult struct {
+	Success *GetTranscodeStatusResp `thrift:"success,0,optional" frugal:"0,optional,GetTranscodeStatusResp" json:"success,omitempty"`
+}
+
+func NewVideoServiceGetTranscodeStatusResult() *VideoServiceGetTranscodeStatusResult {
+	return &VideoServiceGetTranscodeStatusResult{}
+}
+
+func (p *VideoServiceGetTranscodeStatusResult) InitDefault() {
+}
+
+var VideoServiceGetTranscodeStatusResult_Success_DEFAULT *GetTranscodeStatusResp
+
+func (p *VideoServiceGetTranscodeStatusResult) GetSuccess() (v *GetTranscodeStatusResp) {
+	if !p.IsSetSuccess() {
+		return VideoServiceGetTranscodeStatusResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *VideoServiceGetTranscodeStatusResult) SetSuccess(x interface{}) {
+	p.Success = x.(*GetTranscodeStatusResp)
+}
+
+func (p *VideoServiceGetTranscodeStatusResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *VideoServiceGetTranscodeStatusResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoServiceGetTranscodeStatusResult(%+v)", *p)
+}
+
+var fieldIDToName_VideoServiceGetTranscodeStatusResult = map[int16]string{
 	0: "success",
 }

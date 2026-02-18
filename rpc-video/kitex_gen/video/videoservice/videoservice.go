@@ -34,6 +34,34 @@ var serviceMethods = map[string]kitex.MethodInfo{
 		false,
 		kitex.WithStreamingMode(kitex.StreamingNone),
 	),
+	"DownloadChunk": kitex.NewMethodInfo(
+		downloadChunkHandler,
+		newVideoServiceDownloadChunkArgs,
+		newVideoServiceDownloadChunkResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
+	"GetVideoInfo": kitex.NewMethodInfo(
+		getVideoInfoHandler,
+		newVideoServiceGetVideoInfoArgs,
+		newVideoServiceGetVideoInfoResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
+	"Transcode": kitex.NewMethodInfo(
+		transcodeHandler,
+		newVideoServiceTranscodeArgs,
+		newVideoServiceTranscodeResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
+	"GetTranscodeStatus": kitex.NewMethodInfo(
+		getTranscodeStatusHandler,
+		newVideoServiceGetTranscodeStatusArgs,
+		newVideoServiceGetTranscodeStatusResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
 }
 
 var (
@@ -154,6 +182,78 @@ func newVideoServiceMergeFileResult() interface{} {
 	return video.NewVideoServiceMergeFileResult()
 }
 
+func downloadChunkHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*video.VideoServiceDownloadChunkArgs)
+	realResult := result.(*video.VideoServiceDownloadChunkResult)
+	success, err := handler.(video.VideoService).DownloadChunk(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newVideoServiceDownloadChunkArgs() interface{} {
+	return video.NewVideoServiceDownloadChunkArgs()
+}
+
+func newVideoServiceDownloadChunkResult() interface{} {
+	return video.NewVideoServiceDownloadChunkResult()
+}
+
+func getVideoInfoHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*video.VideoServiceGetVideoInfoArgs)
+	realResult := result.(*video.VideoServiceGetVideoInfoResult)
+	success, err := handler.(video.VideoService).GetVideoInfo(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newVideoServiceGetVideoInfoArgs() interface{} {
+	return video.NewVideoServiceGetVideoInfoArgs()
+}
+
+func newVideoServiceGetVideoInfoResult() interface{} {
+	return video.NewVideoServiceGetVideoInfoResult()
+}
+
+func transcodeHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*video.VideoServiceTranscodeArgs)
+	realResult := result.(*video.VideoServiceTranscodeResult)
+	success, err := handler.(video.VideoService).Transcode(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newVideoServiceTranscodeArgs() interface{} {
+	return video.NewVideoServiceTranscodeArgs()
+}
+
+func newVideoServiceTranscodeResult() interface{} {
+	return video.NewVideoServiceTranscodeResult()
+}
+
+func getTranscodeStatusHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*video.VideoServiceGetTranscodeStatusArgs)
+	realResult := result.(*video.VideoServiceGetTranscodeStatusResult)
+	success, err := handler.(video.VideoService).GetTranscodeStatus(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newVideoServiceGetTranscodeStatusArgs() interface{} {
+	return video.NewVideoServiceGetTranscodeStatusArgs()
+}
+
+func newVideoServiceGetTranscodeStatusResult() interface{} {
+	return video.NewVideoServiceGetTranscodeStatusResult()
+}
+
 type kClient struct {
 	c client.Client
 }
@@ -189,6 +289,46 @@ func (p *kClient) MergeFile(ctx context.Context, req *video.MergeFileReq) (r *vi
 	_args.Req = req
 	var _result video.VideoServiceMergeFileResult
 	if err = p.c.Call(ctx, "MergeFile", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) DownloadChunk(ctx context.Context, req *video.DownloadChunkReq) (r *video.DownloadChunkResp, err error) {
+	var _args video.VideoServiceDownloadChunkArgs
+	_args.Req = req
+	var _result video.VideoServiceDownloadChunkResult
+	if err = p.c.Call(ctx, "DownloadChunk", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) GetVideoInfo(ctx context.Context, req *video.GetVideoInfoReq) (r *video.GetVideoInfoResp, err error) {
+	var _args video.VideoServiceGetVideoInfoArgs
+	_args.Req = req
+	var _result video.VideoServiceGetVideoInfoResult
+	if err = p.c.Call(ctx, "GetVideoInfo", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) Transcode(ctx context.Context, req *video.TranscodeReq) (r *video.TranscodeResp, err error) {
+	var _args video.VideoServiceTranscodeArgs
+	_args.Req = req
+	var _result video.VideoServiceTranscodeResult
+	if err = p.c.Call(ctx, "Transcode", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) GetTranscodeStatus(ctx context.Context, req *video.GetTranscodeStatusReq) (r *video.GetTranscodeStatusResp, err error) {
+	var _args video.VideoServiceGetTranscodeStatusArgs
+	_args.Req = req
+	var _result video.VideoServiceGetTranscodeStatusResult
+	if err = p.c.Call(ctx, "GetTranscodeStatus", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil

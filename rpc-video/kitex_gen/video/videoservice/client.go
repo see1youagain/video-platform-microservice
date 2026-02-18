@@ -14,6 +14,10 @@ type Client interface {
 	InitUpload(ctx context.Context, req *video.InitUploadReq, callOptions ...callopt.Option) (r *video.InitUploadResp, err error)
 	UploadChunk(ctx context.Context, req *video.UploadChunkReq, callOptions ...callopt.Option) (r *video.UploadChunkResp, err error)
 	MergeFile(ctx context.Context, req *video.MergeFileReq, callOptions ...callopt.Option) (r *video.MergeFileResp, err error)
+	DownloadChunk(ctx context.Context, req *video.DownloadChunkReq, callOptions ...callopt.Option) (r *video.DownloadChunkResp, err error)
+	GetVideoInfo(ctx context.Context, req *video.GetVideoInfoReq, callOptions ...callopt.Option) (r *video.GetVideoInfoResp, err error)
+	Transcode(ctx context.Context, req *video.TranscodeReq, callOptions ...callopt.Option) (r *video.TranscodeResp, err error)
+	GetTranscodeStatus(ctx context.Context, req *video.GetTranscodeStatusReq, callOptions ...callopt.Option) (r *video.GetTranscodeStatusResp, err error)
 }
 
 // NewClient creates a client for the service defined in IDL.
@@ -58,4 +62,24 @@ func (p *kVideoServiceClient) UploadChunk(ctx context.Context, req *video.Upload
 func (p *kVideoServiceClient) MergeFile(ctx context.Context, req *video.MergeFileReq, callOptions ...callopt.Option) (r *video.MergeFileResp, err error) {
 	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
 	return p.kClient.MergeFile(ctx, req)
+}
+
+func (p *kVideoServiceClient) DownloadChunk(ctx context.Context, req *video.DownloadChunkReq, callOptions ...callopt.Option) (r *video.DownloadChunkResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.DownloadChunk(ctx, req)
+}
+
+func (p *kVideoServiceClient) GetVideoInfo(ctx context.Context, req *video.GetVideoInfoReq, callOptions ...callopt.Option) (r *video.GetVideoInfoResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.GetVideoInfo(ctx, req)
+}
+
+func (p *kVideoServiceClient) Transcode(ctx context.Context, req *video.TranscodeReq, callOptions ...callopt.Option) (r *video.TranscodeResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.Transcode(ctx, req)
+}
+
+func (p *kVideoServiceClient) GetTranscodeStatus(ctx context.Context, req *video.GetTranscodeStatusReq, callOptions ...callopt.Option) (r *video.GetTranscodeStatusResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.GetTranscodeStatus(ctx, req)
 }

@@ -139,3 +139,59 @@ func DeleteChunks(fileHash string, totalChunks int) error {
      }
      return nil
 }
+
+// ReadFileChunk 读取文件分片
+func ReadFileChunk(fileHash, filename string, startByte, endByte int64) ([]byte, int64, error) {
+filePath := GetFilePath(fileHash, filename)
+
+// 获取文件信息
+info, err := os.Stat(filePath)
+if err != nil {
+return nil, 0, fmt.Errorf("文件不存在: %w", err)
+}
+
+totalSize := info.Size()
+
+// 验证范围
+if startByte < 0 {
+startByte = 0
+}
+if endByte <= 0 || endByte > totalSize {
+endByte = totalSize
+}
+if startByte >= endByte {
+return nil, totalSize, fmt.Errorf("无效的字节范围: %d-%d", startByte, endByte)
+}
+
+// 打开文件
+file, err := os.Open(filePath)
+if err != nil {
+return nil, totalSize, fmt.Errorf("无法打开文件: %w", err)
+}
+defer file.Close()
+
+// 定位到起始位置
+if _, err := file.Seek(startByte, 0); err != nil {
+return nil, totalSize, fmt.Errorf("文件定位失败: %w", err)
+}
+
+// 读取指定范围的数据
+length := endByte - startByte
+buffer := make([]byte, length)
+n, err := io.ReadFull(file, buffer)
+if err != nil && err != io.ErrUnexpectedEOF {
+return nil, totalSize, fmt.Errorf("读取文件失败: %w", err)
+}
+
+return buffer[:n], totalSize, nil
+}
+
+// GetFileSize 获取文件大小
+func GetFileSize(fileHash, filename string) (int64, error) {
+filePath := GetFilePath(fileHash, filename)
+info, err := os.Stat(filePath)
+if err != nil {
+return 0, err
+}
+return info.Size(), nil
+}
