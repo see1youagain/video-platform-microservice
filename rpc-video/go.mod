@@ -5,10 +5,10 @@ go 1.24.1
 require (
 	github.com/cloudwego/gopkg v0.1.10
 	github.com/cloudwego/kitex v0.16.1
+	github.com/google/uuid v1.6.0
 	github.com/kitex-contrib/registry-etcd v0.3.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/see1youagain/video-platform-microservice/common v0.0.0
-	go.uber.org/zap v1.27.1
 	gorm.io/gorm v1.31.1
 )
 
@@ -57,6 +57,7 @@ require (
 	go.etcd.io/etcd/client/v3 v3.6.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	golang.org/x/arch v0.14.0 // indirect
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sync v0.12.0 // indirect

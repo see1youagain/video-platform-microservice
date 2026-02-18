@@ -3,6 +3,7 @@ module video-platform-microservice/gateway
 go 1.24.3
 
 require (
+	github.com/cloudwego/gopkg v0.1.10
 	github.com/cloudwego/hertz v0.10.4
 	github.com/cloudwego/kitex v0.16.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
@@ -24,7 +25,6 @@ require (
 	github.com/cloudwego/dynamicgo v0.8.0 // indirect
 	github.com/cloudwego/fastpb v0.0.5 // indirect
 	github.com/cloudwego/frugal v0.3.1 // indirect
-	github.com/cloudwego/gopkg v0.1.10 // indirect
 	github.com/cloudwego/localsession v0.2.1 // indirect
 	github.com/cloudwego/netpoll v0.7.2 // indirect
 	github.com/cloudwego/runtimex v0.1.1 // indirect
