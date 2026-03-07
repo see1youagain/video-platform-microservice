@@ -82,7 +82,7 @@ return "", fmt.Errorf("不支持的分辨率: %s", res)
 
 // 保存到数据库
 resolutionsJSON, _ := json.Marshal(resolutionList)
-if err := db.CreateTranscodeTask(taskID, fileHash, userID, string(resolutionsJSON), ""); err != nil {
+if err := db.CreateTranscodeTask(&db.TranscodeTask{TaskID: taskID, FileHash: fileHash, UserID: userID, Resolutions: string(resolutionsJSON), Status: "pending"}); err != nil {
 return "", err
 }
 
@@ -224,7 +224,7 @@ urlsJSON, _ := json.Marshal(completedURLs)
 db.UpdateTranscodeTaskProgress(taskID, status, 100, string(urlsJSON))
 
 // 更新文件的转码状态
-db.UpdateFileTranscodeStatus(task.FileHash, task.UserID, status, string(urlsJSON))
+db.UpdateFileTranscodeStatus(task.FileHash, status, string(urlsJSON))
 
 return nil
 }

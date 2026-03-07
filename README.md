@@ -1,173 +1,116 @@
 # Video Platform Microservice
 
-基于 CloudWeGo 技术栈的视频平台微服务系统，采用 Hertz + Kitex 实现网关与 RPC 服务分离，支持大文件分片上传、断点续传、秒传、视频转码等功能。
+基于 CloudWeGo 技术栈构建的视频平台微服务项目，用于学习 Hertz、Kitex、Etcd、Kafka 等组件在 Go 微服务中的实际应用。
 
-## 项目架构
+## 架构
 
 ```
-客户端 --> Gateway (Hertz HTTP) --> RPC Services (Kitex)
-                |                       |
-                |                  +---------+---------+
-                |                  |                   |
-             JWT Auth         rpc-user            rpc-video
-                              (用户服务)          (视频服务)
-                                  |                   |
-                              MySQL              MySQL + Redis
-                                                 + 本地存储
+客户端
+  |
+Gateway (Hertz, :8080)
+  |  JWT 认证 + 速率限制 + Trace ID
+  |
+  +---> rpc-user       (:8888)  注册/登录
+  +---> rpc-videoUpload(:8083)  分片上传 / 合并 / 秒传
+  +---> rpc-video      (:8889)  文件信息 / 转码任务管理
+  +---> rpc-videoTranscode(:8084) 转码任务消费与执行
+
+消息队列 (Kafka)
+  video.file.uploaded      <- rpc-videoUpload 发布, rpc-video 消费（建立文件记录）
+  transcode-tasks          <- rpc-video 发布, rpc-videoTranscode 消费
+  video.transcode.finished <- rpc-videoTranscode 发布, rpc-video 消费（更新转码状态）
+
+服务注册/发现: Etcd
+公共模块: common/ (DB、Redis、Kafka、MinIO、日志)
 ```
 
-整体分为三个独立服务，通过 Etcd 做服务注册与发现：
+## 服务说明
 
-- **gateway** - HTTP API 网关，基于 Hertz，负责路由分发、JWT 认证、请求追踪
-- **rpc-user** - 用户服务，基于 Kitex，处理注册/登录，生成 JWT Token
-- **rpc-video** - 视频服务，基于 Kitex，处理视频上传（分片/秒传/断点续传）、下载、转码
+| 服务 | 端口 | 职责 |
+|------|------|------|
+| gateway | 8080 | HTTP 入口，JWT 验证，路由分发 |
+| rpc-user | 8888 | 用户注册、登录，生成 JWT |
+| rpc-videoUpload | 8083 | 分片上传、合并、秒传，合并后发 Kafka 事件 |
+| rpc-video | 8889 | 消费上传事件建立文件记录，管理转码任务 |
+| rpc-videoTranscode | 8084 | 消费转码任务，调 ffmpeg 执行，回写状态 |
 
-公共模块 `common` 提供统一的数据库、Redis、日志、配置等基础能力。
+## 技术栈
+
+- HTTP 框架: Hertz (CloudWeGo)
+- RPC 框架: Kitex (CloudWeGo)
+- IDL: Apache Thrift
+- 服务注册: Etcd
+- 消息队列: Kafka (segmentio/kafka-go)
+- 数据库: MySQL + GORM
+- 缓存: Redis
+- 对象存储: MinIO
+- 认证: JWT (golang-jwt/v5)
+- 语言: Go 1.24
 
 ## 目录结构
 
 ```
 .
-├── gateway/          # HTTP 网关服务
-│   ├── biz/          # 业务逻辑（handler、middleware）
-│   ├── internal/     # 内部工具（JWT、日志、参数校验）
-│   ├── kitex_gen/    # Kitex 生成的 RPC 客户端代码
-│   ├── rpc/          # RPC 客户端初始化
-│   ├── router.go     # 路由注册
-│   └── main.go
-├── rpc-user/         # 用户 RPC 服务
-│   ├── handler.go    # 服务实现
-│   ├── internal/     # 数据库操作、认证工具
-│   ├── kitex_gen/    # Kitex 生成的服务端代码
-│   └── main.go
-├── rpc-video/        # 视频 RPC 服务
-│   ├── handler.go    # 服务实现
-│   ├── internal/     # 数据库、Redis、存储、转码
-│   ├── kitex_gen/    # Kitex 生成的服务端代码
-│   └── main.go
-├── common/           # 公共模块
-│   ├── config/       # 配置加载
-│   ├── db/           # MySQL 连接（GORM）
-│   ├── redis/        # Redis 连接
-│   ├── logger/       # Zap 日志
-│   ├── utils/        # JWT 工具
-│   └── validator/    # 参数校验
-├── idl/              # Thrift IDL 接口定义
-│   ├── user.thrift
-│   └── video.thrift
-├── test/             # 集成测试
-└── deploy/           # 部署脚本
+├── gateway/            # HTTP 网关
+├── rpc-user/           # 用户服务
+├── rpc-video/          # 视频信息 + 转码任务管理
+├── rpc-videoUpload/    # 视频上传服务
+├── rpc-videoTranscode/ # 转码执行服务
+├── common/             # 公共模块（DB/Redis/Kafka/MinIO）
+├── idl/                # Thrift 接口定义
+├── tests/              # 集成测试 + 压力测试
+└── deploy/             # Docker Compose（Etcd/Kafka/MinIO）
 ```
-
-## 技术栈
-
-| 组件 | 技术选型 |
-|------|---------|
-| HTTP 框架 | Hertz (CloudWeGo) |
-| RPC 框架 | Kitex (CloudWeGo) |
-| IDL | Apache Thrift |
-| 服务注册/发现 | Etcd |
-| 数据库 | MySQL + GORM |
-| 缓存 | Redis |
-| 认证 | JWT (golang-jwt/v5) |
-| 日志 | Zap |
-| 语言 | Go 1.24 |
-
-## 核心功能
-
-### 用户服务
-- 用户注册（密码 bcrypt 加密存储）
-- 用户登录（返回 JWT Token）
-- 用户信息查询
-
-### 视频上传
-- **分片上传** - 大文件切分为多个分片，通过 RPC 传输并落盘
-- **断点续传** - 上传中断后重新初始化，服务端返回已完成分片列表，客户端跳过已上传部分
-- **秒传** - 基于 file_hash + user_id 判断，命中 Redis 墓碑缓存或数据库记录后直接返回 URL
-- **幂等性** - 支持 request_id 去重，防止重复提交
-- **分片去重** - 同一分片重复上传会被检测并跳过
-
-### 视频下载
-- 支持 HTTP Range 请求，按字节范围读取文件
-
-### 视频转码
-- 异步转码任务队列
-- 支持多分辨率转码（720p、480p、360p 等）
-- 转码进度查询
 
 ## API 接口
 
-所有接口前缀 `/api`，除注册和登录外均需在 Header 中携带 `Authorization: Bearer <token>`。
-
-### 公开接口
+所有 `/api` 前缀的接口（除注册/登录外）需要 `Authorization: Bearer <token>` header。
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | /ping | 健康检查 |
 | POST | /api/register | 用户注册 |
 | POST | /api/login | 用户登录 |
-
-### 需要认证的接口
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| GET | /api/profile | 获取用户信息 |
+| GET | /api/profile | 用户信息 |
 | POST | /api/video/init | 初始化上传（秒传检查） |
 | POST | /api/video/upload_chunk | 上传分片 |
 | POST | /api/video/merge | 合并分片 |
 | POST | /api/video/upload | 简单上传（小文件） |
-| POST | /api/video/hash | 计算文件哈希 |
-| GET | /api/video/download | 下载视频（支持 Range） |
-| GET | /api/video/info | 获取视频信息 |
 | POST | /api/video/transcode | 创建转码任务 |
 | GET | /api/video/transcode/status | 查询转码状态 |
+| GET | /api/video/download | 下载视频 |
+| GET | /api/video/info | 视频信息 |
 
-## 环境依赖
+## 上传流程
 
-- Go >= 1.24
-- MySQL 8.0
-- Redis 6+
-- Etcd 3.5+
+```
+1. 客户端计算文件 MD5 作为 file_hash
+2. POST /api/video/init
+   - 返回 status=finished  -> 秒传命中，直接拿 URL
+   - 返回 status=partial   -> 断点续传，跳过已上传分片
+   - 返回 status=new       -> 正常上传
+3. POST /api/video/upload_chunk  (每个分片，支持并发)
+4. POST /api/video/merge
+   - 服务端合并，上传 MinIO，发布 video.file.uploaded 事件
+   - rpc-video 消费事件，在数据库建立文件记录
+5. 之后可调 /api/video/transcode 创建转码任务
+```
 
 ## 快速启动
 
-### 1. 准备基础服务
-
-确保 MySQL、Redis、Etcd 已启动。
+### 依赖服务
 
 ```bash
-# MySQL 建库建用户
-mysql -u root -p -e "
-CREATE DATABASE IF NOT EXISTS video_platform;
-CREATE USER IF NOT EXISTS 'video_user'@'localhost' IDENTIFIED BY 'your_password';
-GRANT ALL PRIVILEGES ON video_platform.* TO 'video_user'@'localhost';
-FLUSH PRIVILEGES;
-"
+cd deploy/docker
+docker-compose -f etcd-kafka-minio-compose.yml up -d
 ```
 
-### 2. 配置环境变量
+### 环境变量
 
-每个服务目录下创建 `.env` 文件：
+每个服务目录下创建 `.env`（已在 .gitignore 中排除）：
 
-**gateway/.env**
-```
-JWT_SECRET=your_jwt_secret_key_at_least_32_chars
-ETCD_ADDRESS=127.0.0.1:2379
-```
-
-**rpc-user/.env**
-```
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_USER=video_user
-DB_PASSWORD=your_password
-DB_NAME=video_platform
-JWT_SECRET=your_jwt_secret_key_at_least_32_chars
-ETCD_ADDRESS=127.0.0.1:2379
-```
-
-**rpc-video/.env**
-```
+```env
+# 示例：rpc-video/.env
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_USER=video_user
@@ -175,87 +118,37 @@ DB_PASSWORD=your_password
 DB_NAME=video_platform
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
-RPC_PORT=8889
 ETCD_ENDPOINTS=127.0.0.1:2379
+KAFKA_BROKERS=127.0.0.1:9092
+RPC_PORT=8889
 STORAGE_PATH=/tmp/video-platform
-CHUNK_SIZE=2097152
 ```
 
-注意：三个服务的 `JWT_SECRET` 必须一致。
+注意：gateway 和 rpc-user 的 `JWT_SECRET` 必须相同。
 
-### 3. 启动服务
-
-分别在三个终端中启动：
+### 启动服务
 
 ```bash
-# 终端 1 - 启动用户服务
-cd rpc-user && go run .
-
-# 终端 2 - 启动视频服务
-cd rpc-video && go run .
-
-# 终端 3 - 启动网关
-cd gateway && go run .
+cd rpc-user           && go run .
+cd rpc-video          && go run .
+cd rpc-videoUpload    && go run .
+cd rpc-videoTranscode && go run .
+cd gateway            && go run .
 ```
 
-网关默认监听 `8080` 端口。
-
-### 4. 验证
+### 运行测试
 
 ```bash
-# 健康检查
-curl http://localhost:8080/ping
-
-# 注册
-curl -X POST http://localhost:8080/api/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"Test123456"}'
-
-# 登录
-curl -X POST http://localhost:8080/api/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","password":"Test123456"}'
+cd tests/cmd && go run main.go
 ```
 
-## 上传流程
+## 身份透传
 
-```
-1. 客户端计算文件 MD5/SHA256 作为 file_hash
-2. POST /api/video/init  -->  检查秒传 / 断点续传
-   - 返回 status="finished" + url  -->  秒传成功，流程结束
-   - 返回 status="uploading" + finished_chunks  -->  断点续传，跳过已完成分片
-3. 将文件切分为固定大小的分片（默认 2MB）
-4. POST /api/video/upload_chunk  -->  逐个上传分片（支持并发）
-5. POST /api/video/merge  -->  服务端合并所有分片，写入数据库，设置墓碑缓存
-```
+Gateway 的 JWT 中间件验证通过后，通过 Kitex metainfo 将 `user_id` 注入上下文：
 
-## 认证机制
-
-系统使用 JWT 进行身份认证，认证流程：
-
-1. 用户通过 `/api/login` 获取 Token
-2. 后续请求在 Header 中携带 `Authorization: Bearer <token>`
-3. Gateway 的 JWT 中间件验证 Token，提取 user_id 和 username
-4. 通过 Kitex 的 metainfo 机制将用户信息透传给下游 RPC 服务
-
-所有视频相关操作（上传、下载、转码等）均强制要求 Token，不允许匿名访问。
-
-## 测试
-
-项目在 `test/` 目录下提供了集成测试，覆盖以下场景：
-
-- 用户注册/登录
-- JWT 认证与未认证拒绝
-- 视频初始化上传、分片上传、合并
-- 并发上传
-- 断点续传
-- 幂等性验证
-- MetaInfo 传递验证
-
-```bash
-cd test && go run test_comprehensive.go
+```go
+// 下游服务获取用户 ID，不依赖业务字段（防止伪造）
+uid, _ := metainfo.GetPersistentValue(ctx, "user_id")
 ```
 
 ## License

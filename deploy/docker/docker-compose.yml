@@ -1,4 +1,4 @@
-version: '3.7'
+version: '3.8'
 
 services:
   mysql:
@@ -14,11 +14,10 @@ services:
     volumes:
       - mysql-data:/var/lib/mysql
     healthcheck:
-      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       timeout: 20s
       retries: 10
-    networks:
-      - video-network
+    networks: [video-network]
 
   redis:
     image: redis:7-alpine
@@ -28,28 +27,107 @@ services:
     volumes:
       - redis-data:/data
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       timeout: 3s
       retries: 5
-    networks:
-      - video-network
+    networks: [video-network]
 
-  etcd:
-    image: quay.io/coreos/etcd:v3.5.9
-    container_name: video-etcd
+  zookeeper:
+    image: bitnami/zookeeper:3.9
+    container_name: video-zookeeper
     environment:
-      - ETCD_LISTEN_CLIENT_URLS=http://0.0.0.0:2379
-      - ETCD_ADVERTISE_CLIENT_URLS=http://etcd:2379
+      - ALLOW_ANONYMOUS_LOGIN=yes
+    ports:
+      - "2181:2181"
+    networks: [video-network]
+
+  kafka:
+    image: bitnami/kafka:3.7
+    container_name: video-kafka
+    depends_on: [zookeeper]
+    ports:
+      - "9092:9092"
+    environment:
+      - KAFKA_CFG_BROKER_ID=1
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - ALLOW_PLAINTEXT_LISTENER=yes
+    networks: [video-network]
+
+  minio:
+    image: minio/minio:latest
+    container_name: video-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks: [video-network]
+
+  etcd1:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: video-etcd1
+    command: >
+      /usr/local/bin/etcd
+      --name etcd1
+      --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd1:2379
+      --listen-peer-urls http://0.0.0.0:2380
+      --initial-advertise-peer-urls http://etcd1:2380
+      --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      --initial-cluster-state new
+      --initial-cluster-token etcd-cluster-1
     ports:
       - "2379:2379"
     volumes:
-      - etcd-data:/etcd-data
-    healthcheck:
-      test: [ "CMD", "etcdctl", "--endpoints=localhost:2379", "endpoint", "health" ]
-      timeout: 3s
-      retries: 5
-    networks:
-      - video-network
+      - etcd1-data:/etcd-data
+    networks: [video-network]
+
+  etcd2:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: video-etcd2
+    command: >
+      /usr/local/bin/etcd
+      --name etcd2
+      --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd2:2379
+      --listen-peer-urls http://0.0.0.0:2380
+      --initial-advertise-peer-urls http://etcd2:2380
+      --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      --initial-cluster-state new
+      --initial-cluster-token etcd-cluster-1
+    ports:
+      - "22379:2379"
+    volumes:
+      - etcd2-data:/etcd-data
+    networks: [video-network]
+
+  etcd3:
+    image: quay.io/coreos/etcd:v3.5.9
+    container_name: video-etcd3
+    command: >
+      /usr/local/bin/etcd
+      --name etcd3
+      --data-dir /etcd-data
+      --listen-client-urls http://0.0.0.0:2379
+      --advertise-client-urls http://etcd3:2379
+      --listen-peer-urls http://0.0.0.0:2380
+      --initial-advertise-peer-urls http://etcd3:2380
+      --initial-cluster etcd1=http://etcd1:2380,etcd2=http://etcd2:2380,etcd3=http://etcd3:2380
+      --initial-cluster-state new
+      --initial-cluster-token etcd-cluster-1
+    ports:
+      - "32379:2379"
+    volumes:
+      - etcd3-data:/etcd-data
+    networks: [video-network]
 
   rpc-user:
     build:
@@ -62,18 +140,15 @@ services:
       DB_USER: video_user
       DB_PASSWORD: video_password
       DB_NAME: video_platform
-      REDIS_ADDR: redis:6379
-      ETCD_ADDRESS: etcd:2379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ETCD_ADDRESS: etcd1:2379
       JWT_SECRET: "your-secret-key-min-32-characters-long!!!"
       LOG_LEVEL: info
     ports:
       - "8888:8888"
-    depends_on:
-      - mysql
-      - redis
-      - etcd
-    networks:
-      - video-network
+    depends_on: [mysql, redis, etcd1, etcd2, etcd3]
+    networks: [video-network]
 
   rpc-video:
     build:
@@ -86,19 +161,21 @@ services:
       DB_USER: video_user
       DB_PASSWORD: video_password
       DB_NAME: video_platform
-      REDIS_ADDR: redis:6379
-      ETCD_ADDRESS: etcd:2379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ETCD_ENDPOINTS: etcd1:2379,etcd2:2379,etcd3:2379
+      KAFKA_BROKERS: kafka:9092
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: video-platform
       LOG_LEVEL: info
     ports:
       - "8889:8889"
-    depends_on:
-      - mysql
-      - redis
-      - etcd
+    depends_on: [mysql, redis, kafka, minio, etcd1, etcd2, etcd3]
     volumes:
       - video-storage:/app/storage
-    networks:
-      - video-network
+    networks: [video-network]
 
   gateway:
     build:
@@ -106,23 +183,24 @@ services:
       dockerfile: gateway/Dockerfile
     container_name: video-gateway
     environment:
-      ETCD_ADDRESS: etcd:2379
+      ETCD_ENDPOINTS: etcd1:2379,etcd2:2379,etcd3:2379
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
       JWT_SECRET: "your-secret-key-min-32-characters-long!!!"
       LOG_LEVEL: info
     ports:
       - "8080:8080"
-    depends_on:
-      - rpc-user
-      - rpc-video
-    networks:
-      - video-network
+    depends_on: [rpc-user, rpc-video]
+    networks: [video-network]
 
 volumes:
   mysql-data:
   redis-data:
-  etcd-data:
+  minio-data:
+  etcd1-data:
+  etcd2-data:
+  etcd3-data:
   video-storage:
-
 
 networks:
   video-network:
