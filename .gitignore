@@ -47,3 +47,22 @@ rpc-user/rpc-user-test
 gateway/gateway
 rpc-user/rpc-user
 rpc-video/rpc-video-test
+
+# 编译产物（补充）
+clients/video-platform-client
+rpc-user/user
+rpc-video/video
+rpc-videoUpload/videoUpload
+rpc-videoTranscode/videoTranscode
+.pids/
+
+# 编译产物
+clients/video-platform-client
+rpc-user/user
+rpc-video/video
+rpc-videoTranscode/rpc-videoTranscode
+rpc-videoTranscode/videoTranscode
+rpc-videoUpload/rpc-videoUpload
+rpc-videoUpload/videoUpload
+tests/cmd/cmd
+.pids/

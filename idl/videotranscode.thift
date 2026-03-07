@@ -1,0 +1,31 @@
+namespace go videotranscode
+
+struct TranscodeTaskReq {
+    1: required string file_hash
+    2: required string minio_url
+    3: required list<string> resolution_list
+}
+
+struct TranscodeTaskResp {
+    1: required i32 code
+    2: required string msg
+    3: optional string task_id
+}
+
+struct TranscodeStatusReq {
+    1: required string task_id
+}
+
+struct TranscodeStatusResp {
+    1: required i32 code
+    2: required string msg
+    3: optional string status       // "pending" | "processing" | "completed" | "failed"
+    4: optional i32 progress        // 0-100
+    5: optional list<string> urls   // 转码完成后的 URL 列表
+    6: optional string error_msg
+}
+
+service VideoTranscodeService {
+    TranscodeTaskResp CreateTask(1: TranscodeTaskReq req)
+    TranscodeStatusResp GetStatus(1: TranscodeStatusReq req)
+}

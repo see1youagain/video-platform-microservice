@@ -1,81 +1,89 @@
 package middleware
 
 import (
-"context"
-"fmt"
-"strings"
-"video-platform-microservice/gateway/internal/utils"
+	"context"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
 
-"github.com/cloudwego/hertz/pkg/app"
-"github.com/cloudwego/hertz/pkg/protocol/consts"
-"github.com/bytedance/gopkg/cloud/metainfo"
+	"github.com/bytedance/gopkg/cloud/metainfo"
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	commonRedis "github.com/see1youagain/video-platform-microservice/common/redis"
+	"github.com/see1youagain/video-platform-microservice/common/utils"
 )
 
 func JWTAuthMiddleware() app.HandlerFunc {
-return func(ctx context.Context, c *app.RequestContext) {
-// 在这里实现 JWT 验证逻辑
-// 例如，提取并验证 JWT token，如果无效则返回 401 错误
-// 步骤1 提取Token
-authHeader := c.GetHeader("Authorization")
-if len(authHeader) == 0 {
-c.JSON(consts.StatusUnauthorized, map[string]interface{}{
-"code": 401,
-"msg":  "未授权: 缺少 Authorization 头",
-})
-c.Abort() // 中断请求链，停止后续处理
-return
-}
-tokenString := strings.TrimPrefix(string(authHeader), "Bearer ")
-if tokenString == string(authHeader) {
-c.JSON(consts.StatusUnauthorized, map[string]interface{}{
-"code": 401,
-"msg":  "认证格式错误",
-})
-c.Abort() // 中断请求链，停止后续处理
-return
-}
-// 步骤2 验证Token
-claims, err := utils.ParseToken(tokenString)
-if err != nil {
-c.JSON(consts.StatusUnauthorized, map[string]interface{}{
-"code": 401,
-"msg":  "无效的 Token",
-})
-c.Abort() // 中断请求链，停止后续处理
-return
-}
-// 步骤3 提取用户信息
-userID, ok := claims["user_id"].(float64)
-if !ok {
-c.JSON(consts.StatusUnauthorized, map[string]interface{}{
-"code": 401,
-"msg":  "Token 中缺少用户信息",
-})
-c.Abort() // 中断请求链，停止后续处理
-return
-}
+	return func(ctx context.Context, c *app.RequestContext) {
+		authHeader := c.GetHeader("Authorization")
+		if len(authHeader) == 0 {
+			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
+				"code": 401,
+				"msg":  "未授权: 缺少 Authorization 头",
+			})
+			c.Abort()
+			return
+		}
 
-username, ok := claims["username"].(string)
-if !ok {
-c.JSON(consts.StatusUnauthorized, map[string]interface{}{
-"code": 401,
-"msg":  "Token 中缺少用户名信息",
-})
-c.Abort() // 中断请求链，停止后续处理
-return
-}
+		tokenString := strings.TrimPrefix(string(authHeader), "Bearer ")
+		if tokenString == string(authHeader) {
+			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
+				"code": 401,
+				"msg":  "认证格式错误",
+			})
+			c.Abort()
+			return
+		}
 
-// 步骤4 注入上下文
-// 4.1 设置到 Hertz context（供网关层使用）
-c.Set("user_id", int64(userID))
-c.Set("username", username)
+		secret := utils.GetCurrentSecretKey()
+		if secret == "" {
+			secret = os.Getenv("JWT_SECRET")
+		}
 
-// 4.2 使用 metainfo 将用户信息传递给下游 RPC 服务
-// 这样 RPC 服务可以通过 metainfo.GetPersistentValue 获取用户信息
-ctx = metainfo.WithPersistentValue(ctx, "user_id", fmt.Sprintf("%d", int64(userID)))
-ctx = metainfo.WithPersistentValue(ctx, "username", username)
+		claims, err := utils.ParseToken(tokenString, secret)
+		if err != nil {
+			if oldSecret, redisErr := commonRedis.GetClient().Get(ctx, "jwt:old_secret_key").Result(); redisErr == nil && oldSecret != "" {
+				claims, err = utils.ParseToken(tokenString, oldSecret)
+			}
+		}
+		if err != nil {
+			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
+				"code": 401,
+				"msg":  "无效的 Token",
+			})
+			c.Abort()
+			return
+		}
 
-// 步骤5 继续执行（使用更新后的 context）
-c.Next(ctx)
-}
+		userID := claims.UserID
+		username := claims.Username
+		if userID == 0 || username == "" {
+			c.JSON(consts.StatusUnauthorized, map[string]interface{}{
+				"code": 401,
+				"msg":  "Token 中缺少用户信息",
+			})
+			c.Abort()
+			return
+		}
+
+		if cachedToken, redisErr := utils.GetCachedToken(ctx, commonRedis.GetClient(), strconv.FormatUint(uint64(userID), 10)); redisErr == nil {
+			if cachedToken != tokenString {
+				c.JSON(consts.StatusUnauthorized, map[string]interface{}{
+					"code": 401,
+					"msg":  "Token 已失效",
+				})
+				c.Abort()
+				return
+			}
+		}
+
+		c.Set("user_id", int64(userID))
+		c.Set("username", username)
+
+		ctx = metainfo.WithPersistentValue(ctx, "user_id", fmt.Sprintf("%d", userID))
+		ctx = metainfo.WithPersistentValue(ctx, "username", username)
+
+		c.Next(ctx)
+	}
 }

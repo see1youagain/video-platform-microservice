@@ -2,36 +2,66 @@ package rpc
 
 import (
 "log"
+"os"
+"strings"
 
 "video-platform-microservice/gateway/kitex_gen/user/userservice"
 "video-platform-microservice/gateway/kitex_gen/video/videoservice"
+"video-platform-microservice/gateway/kitex_gen/videoupload/videouploadservice"
 
 "github.com/cloudwego/kitex/client"
+"github.com/cloudwego/kitex/pkg/circuitbreak"
 etcd "github.com/kitex-contrib/registry-etcd"
 )
 
 var UserClient userservice.Client
 var VideoClient videoservice.Client
+var VideoUploadClient videouploadservice.Client
 
-// InitRPC 初始化所有 RPC 客户端
 func InitRPC() {
-// 创建 Etcd 服务发现解析器
-r, err := etcd.NewEtcdResolver([]string{"127.0.0.1:2379"})
+etcdEndpoints := os.Getenv("ETCD_ENDPOINTS")
+if etcdEndpoints == "" {
+if single := os.Getenv("ETCD_ADDRESS"); single != "" {
+etcdEndpoints = single
+} else {
+etcdEndpoints = "127.0.0.1:2379"
+}
+}
+endpoints := strings.Split(etcdEndpoints, ",")
+
+r, err := etcd.NewEtcdResolver(endpoints)
 if err != nil {
 log.Fatalf("创建 Etcd 解析器失败: %v", err)
 }
 
-// 初始化 User 服务客户端
-UserClient, err = userservice.NewClient("user", client.WithResolver(r))
+cb := circuitbreak.NewCBSuite(circuitbreak.RPCInfo2Key)
+
+UserClient, err = userservice.NewClient(
+"user",
+client.WithResolver(r),
+client.WithCircuitBreaker(cb),
+)
 if err != nil {
 log.Fatalf("初始化 User 客户端失败: %v", err)
 }
 
-// 初始化 Video 服务客户端
-VideoClient, err = videoservice.NewClient("video", client.WithResolver(r))
+VideoClient, err = videoservice.NewClient(
+"video",
+client.WithResolver(r),
+client.WithCircuitBreaker(cb),
+)
 if err != nil {
 log.Fatalf("初始化 Video 客户端失败: %v", err)
 }
 
-log.Println("✅ RPC 客户端初始化成功 (User + Video)")
+VideoUploadClient, err = videouploadservice.NewClient(
+"videoupload",
+client.WithResolver(r),
+client.WithCircuitBreaker(cb),
+)
+if err != nil {
+log.Fatalf("初始化 VideoUpload 客户端失败: %v", err)
+}
+
+log.Printf("✅ RPC 客户端初始化成功 (User + Video + VideoUpload), etcd=%v", endpoints)
 }

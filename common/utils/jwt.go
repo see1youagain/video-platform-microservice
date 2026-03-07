@@ -1,17 +1,36 @@
 package utils
 
 import (
+	"errors"
 	"fmt"
+	"log"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
+var JwtSecret []byte
+
 type Claims struct {
     UserID   uint   `json:"user_id"`
     Username string `json:"username"`
     jwt.RegisteredClaims
+}
+
+// InitJWT 初始化 JWT 密钥
+func InitJWT() error {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		return errors.New("JWT_SECRET 环境变量未设置")
+	}
+	if len(secret) < 32 {
+		log.Println("警告: JWT_SECRET 长度过短，建议至少 32 个字符")
+	}
+	JwtSecret = []byte(secret)
+	log.Println("Gateway JWT 密钥初始化成功")
+	return nil
 }
 
 func GenerateToken(userID uint, username string, secret string, expireHours int) (string, error) {

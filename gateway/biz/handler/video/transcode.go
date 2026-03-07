@@ -1,16 +1,17 @@
 package video
 
 import (
-"context"
-"fmt"
+	"context"
+	"fmt"
+	"strconv"
 
-"github.com/cloudwego/hertz/pkg/app"
-"github.com/cloudwego/hertz/pkg/protocol/consts"
-"go.uber.org/zap"
+	"github.com/cloudwego/hertz/pkg/app"
+	"github.com/cloudwego/hertz/pkg/protocol/consts"
+	"go.uber.org/zap"
 
-"video-platform-microservice/gateway/rpc"
-"video-platform-microservice/gateway/internal/logger"
-videogen "video-platform-microservice/gateway/kitex_gen/video"
+	"video-platform-microservice/gateway/internal/logger"
+	videogen "video-platform-microservice/gateway/kitex_gen/video"
+	"video-platform-microservice/gateway/rpc"
 )
 
 // TranscodeHandler 创建转码任务
@@ -18,7 +19,6 @@ func TranscodeHandler(ctx context.Context, c *app.RequestContext) {
 var req struct {
 FileHash    string   `json:"file_hash" binding:"required"`
 Resolutions []string `json:"resolutions" binding:"required"`
-UserID      string   `json:"user_id"`
 }
 
 if err := c.BindAndValidate(&req); err != nil {
@@ -29,24 +29,42 @@ c.JSON(consts.StatusBadRequest, map[string]interface{}{
 return
 }
 
-traceID, _ := c.Get("trace_id")
+// 显式验证 resolutions 非空（binding:required 对空 slice 不可靠）
+if len(req.Resolutions) == 0 {
+c.JSON(consts.StatusBadRequest, map[string]interface{}{
+"code": 400,
+"msg":  "resolutions 不能为空",
+})
+return
+}
+
+traceIDRaw, _ := c.Get("trace_id")
+	traceID, _ := traceIDRaw.(string)
+userIDRaw, _ := c.Get("user_id")
+var userIDStr string
+if v, ok := userIDRaw.(int64); ok {
+	userIDStr = strconv.FormatInt(v, 10)
+} else if v, ok := userIDRaw.(string); ok {
+	userIDStr = v
+}
+
 logger.Logger.Info("创建转码任务",
-zap.String("trace_id", traceID.(string)),
+zap.String("trace_id", traceID),
 zap.String("file_hash", req.FileHash),
-zap.String("user_id", req.UserID),
+zap.String("user_id", userIDStr),
 zap.Any("resolutions", req.Resolutions),
 )
 
 // 调用 RPC 服务
 resp, err := rpc.VideoClient.Transcode(ctx, &videogen.TranscodeReq{
 FileHash:    req.FileHash,
-UserId:      req.UserID,
+UserId:      userIDStr,
 Resolutions: req.Resolutions,
 })
 
 if err != nil {
 logger.Logger.Error("RPC 调用失败",
-zap.String("trace_id", traceID.(string)),
+zap.String("trace_id", traceID),
 zap.Error(err),
 )
 c.JSON(consts.StatusInternalServerError, map[string]interface{}{
@@ -75,9 +93,10 @@ c.JSON(consts.StatusBadRequest, map[string]interface{}{
 return
 }
 
-traceID, _ := c.Get("trace_id")
+traceIDRaw, _ := c.Get("trace_id")
+	traceID, _ := traceIDRaw.(string)
 logger.Logger.Info("查询转码状态",
-zap.String("trace_id", traceID.(string)),
+zap.String("trace_id", traceID),
 zap.String("task_id", taskID),
 )
 
@@ -88,7 +107,7 @@ TaskId: taskID,
 
 if err != nil {
 logger.Logger.Error("RPC 调用失败",
-zap.String("trace_id", traceID.(string)),
+zap.String("trace_id", traceID),
 zap.Error(err),
 )
 c.JSON(consts.StatusInternalServerError, map[string]interface{}{
