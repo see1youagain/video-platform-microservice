@@ -2,6 +2,7 @@ namespace go videotranscode
 
 struct TranscodeTaskReq {
     1: required string file_hash
+    4: required i64 user_id
     2: required string minio_url
     3: required list<string> resolution_list
 }

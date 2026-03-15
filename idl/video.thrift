@@ -1,8 +1,6 @@
-namespace go video
+namespace go videomanager
 
-// ============================================================
-// 初始化上传
-// ============================================================
+// ─── 上传协调（委托 videoUpload，通过 RPC 中转）────────────────────────────
 struct InitUploadReq {
     1: required string file_hash
     2: required string filename
@@ -16,65 +14,54 @@ struct InitUploadReq {
 struct InitUploadResp {
     1: required i32           code
     2: required string        msg
-    3: optional string        status          // "new" | "exists" | "partial"
-    4: optional list<string>  finished_chunks // 已上传的分片索引列表
-    5: optional string        url             // 若已存在则直接返回访问 URL
+    3: optional string        status
+    4: optional list<string>  finished_chunks
+    5: optional string        url
+    6: optional string        upload_id
 }
 
-// ============================================================
-// 上传分片
-// ============================================================
-struct UploadChunkReq {
-    1: required string file_hash
-    2: required i32    index
-    3: required binary data
-    4: required string user_id
+struct FinalizeUploadReq {
+    1: required string       file_hash
+    2: required string       filename
+    3: required i32          total_chunks
+    4: required string       user_id
+    5: optional i32          width
+    6: optional i32          height
+    7: optional string       request_id
+    8: optional list<string> resolutions
+    9: optional string       upload_id
 }
 
-struct UploadChunkResp {
-    1: required i32    code
-    2: required string msg
-}
-
-// ============================================================
-// 合并文件
-// ============================================================
-struct MergeFileReq {
-    1: required string file_hash
-    2: required string filename
-    3: required i32    total_chunks
-    4: required string user_id
-    5: optional i32    width
-    6: optional i32    height
-    7: optional string request_id
-}
-
-struct MergeFileResp {
+struct FinalizeUploadResp {
     1: required i32    code
     2: required string msg
     3: optional string url
+    4: optional string task_id
 }
 
-// ============================================================
-// 下载分片
-// ============================================================
-struct DownloadChunkReq {
-    1: required string file_hash
-    2: required i32    chunk_index
-    3: optional i64    start_byte
-    4: optional i64    end_byte
+// ─── 进度查询与中止（委托 videoUpload RPC）──────────────────────────────────
+struct QueryUploadProgressReq {
+    1: required string upload_id
 }
 
-struct DownloadChunkResp {
+struct QueryUploadProgressResp {
     1: required i32    code
     2: required string msg
-    3: optional binary data
-    4: optional i64    total_size
+    3: optional i32    uploaded_parts
+    4: optional i32    total_parts
 }
 
-// ============================================================
-// 获取视频信息
-// ============================================================
+struct AbortUploadReq {
+    1: required string upload_id
+    2: required string file_hash
+}
+
+struct AbortUploadResp {
+    1: required i32    code
+    2: required string msg
+}
+
+// ─── 视频信息管理 ─────────────────────────────────────────────────────────
 struct GetVideoInfoReq {
     1: required string file_hash
     2: optional string user_id
@@ -90,16 +77,24 @@ struct GetVideoInfoResp {
     7: optional i32           height
     8: optional string        url
     9: optional list<string>  transcode_urls
-    10: optional string       transcode_status  // "pending" | "processing" | "done" | "failed"
+    10: optional string       transcode_status
 }
 
-// ============================================================
-// 创建转码任务
-// ============================================================
+struct DeleteVideoReq {
+    1: required string file_hash
+    2: required string user_id
+}
+
+struct DeleteVideoResp {
+    1: required i32    code
+    2: required string msg
+}
+
+// ─── 转码调度（使用 Outbox 保证双写一致性）──────────────────────────────────
 struct TranscodeReq {
     1: required string       file_hash
     2: required string       user_id
-    3: required list<string> resolutions  // e.g. ["360p","720p","1080p"]
+    3: required list<string> resolutions
     4: optional string       request_id
 }
 
@@ -109,9 +104,6 @@ struct TranscodeResp {
     3: optional string task_id
 }
 
-// ============================================================
-// 查询转码状态
-// ============================================================
 struct GetTranscodeStatusReq {
     1: required string task_id
 }
@@ -119,20 +111,19 @@ struct GetTranscodeStatusReq {
 struct GetTranscodeStatusResp {
     1: required i32           code
     2: required string        msg
-    3: optional string        status         // "pending" | "processing" | "done" | "failed"
-    4: optional double        progress       // 0.0 ~ 1.0
+    3: optional string        status
+    4: optional double        progress
     5: optional list<string>  completed_urls
 }
 
-// ============================================================
-// 服务定义
-// ============================================================
-service VideoService {
-    InitUploadResp         InitUpload         (1: InitUploadReq         req)
-    UploadChunkResp        UploadChunk        (1: UploadChunkReq        req)
-    MergeFileResp          MergeFile          (1: MergeFileReq          req)
-    DownloadChunkResp      DownloadChunk      (1: DownloadChunkReq      req)
-    GetVideoInfoResp       GetVideoInfo       (1: GetVideoInfoReq       req)
-    TranscodeResp          Transcode          (1: TranscodeReq          req)
-    GetTranscodeStatusResp GetTranscodeStatus (1: GetTranscodeStatusReq req)
+// ─── 服务定义 ─────────────────────────────────────────────────────────────
+service VideoManagerService {
+    InitUploadResp          InitUpload          (1: InitUploadReq          req)
+    FinalizeUploadResp      FinalizeUpload       (1: FinalizeUploadReq      req)
+    QueryUploadProgressResp QueryUploadProgress  (1: QueryUploadProgressReq req)
+    AbortUploadResp         AbortUpload          (1: AbortUploadReq         req)
+    GetVideoInfoResp        GetVideoInfo         (1: GetVideoInfoReq        req)
+    DeleteVideoResp         DeleteVideo          (1: DeleteVideoReq         req)
+    TranscodeResp           Transcode            (1: TranscodeReq           req)
+    GetTranscodeStatusResp  GetTranscodeStatus   (1: GetTranscodeStatusReq req)
 }

@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rpc-videomanager
+  namespace: default
+  labels:
+    app: rpc-videomanager
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rpc-videomanager
+  template:
+    metadata:
+      labels:
+        app: rpc-videomanager
+    spec:
+      containers:
+        - name: rpc-videomanager
+          image: video-platform/rpc-videomanager:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8889
+          envFrom:
+            - configMapRef:
+                name: video-platform-config
+            - secretRef:
+                name: video-platform-secret
+          env:
+            - name: RPC_PORT
+              value: "8889"
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            tcpSocket:
+              port: 8889
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 8889
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rpc-videomanager
+  namespace: default
+  labels:
+    app: rpc-videomanager
+spec:
+  type: ClusterIP
+  selector:
+    app: rpc-videomanager
+  ports:
+    - name: rpc
+      port: 8889
+      targetPort: 8889
+      protocol: TCP

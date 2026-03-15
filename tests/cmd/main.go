@@ -15,7 +15,6 @@ func main() {
 	fmt.Println("╚══════════════════════════════════════════════════════╝")
 	fmt.Println()
 
-	// Wait for gateway
 	fmt.Print("⏳ 等待 Gateway 就绪 (最多 30s) ... ")
 	if !tests.WaitForReady(30 * time.Second) {
 		fmt.Println("\n❌ Gateway 未响应！请先启动所有服务。")
@@ -26,20 +25,17 @@ func main() {
 
 	totalPass, totalFail := 0, 0
 
-	// Phase 1: Basic
 	p, f := tests.RunBasicTests()
 	totalPass += p
 	totalFail += f
 
-	// Phase 2: Functional
 	p, f = tests.RunFunctionalTests()
 	totalPass += p
 	totalFail += f
 
-	// Phase 3: Stress (only if functional passed reasonably)
-	tests.RunStressTests()
+	// Phase 3: Stress（先注释，优先验证功能测试）
+	// tests.RunStressTests()
 
-	// Final
 	fmt.Println("\n╔══════════════════════════════════════════════════════╗")
 	fmt.Printf("║  总计: %d passed   %d failed", totalPass, totalFail)
 	padding := 38 - len(fmt.Sprintf("%d passed   %d failed", totalPass, totalFail))

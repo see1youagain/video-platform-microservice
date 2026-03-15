@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rpc-videotranscode
+  namespace: default
+  labels:
+    app: rpc-videotranscode
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rpc-videotranscode
+  template:
+    metadata:
+      labels:
+        app: rpc-videotranscode
+    spec:
+      containers:
+        - name: rpc-videotranscode
+          image: video-platform/rpc-videotranscode:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8890
+          envFrom:
+            - configMapRef:
+                name: video-platform-config
+            - secretRef:
+                name: video-platform-secret
+          env:
+            - name: RPC_PORT
+              value: "8890"
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+          livenessProbe:
+            tcpSocket:
+              port: 8890
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: 8890
+            initialDelaySeconds: 10
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rpc-videotranscode
+  namespace: default
+  labels:
+    app: rpc-videotranscode
+spec:
+  type: ClusterIP
+  selector:
+    app: rpc-videotranscode
+  ports:
+    - name: rpc
+      port: 8890
+      targetPort: 8890
+      protocol: TCP

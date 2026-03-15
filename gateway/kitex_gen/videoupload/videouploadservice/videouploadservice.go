@@ -41,6 +41,20 @@ var serviceMethods = map[string]kitex.MethodInfo{
 		false,
 		kitex.WithStreamingMode(kitex.StreamingNone),
 	),
+	"QueryProgress": kitex.NewMethodInfo(
+		queryProgressHandler,
+		newVideoUploadServiceQueryProgressArgs,
+		newVideoUploadServiceQueryProgressResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
+	"AbortUpload": kitex.NewMethodInfo(
+		abortUploadHandler,
+		newVideoUploadServiceAbortUploadArgs,
+		newVideoUploadServiceAbortUploadResult,
+		false,
+		kitex.WithStreamingMode(kitex.StreamingNone),
+	),
 }
 
 var (
@@ -179,6 +193,42 @@ func newVideoUploadServiceSimpleUploadResult() interface{} {
 	return videoupload.NewVideoUploadServiceSimpleUploadResult()
 }
 
+func queryProgressHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*videoupload.VideoUploadServiceQueryProgressArgs)
+	realResult := result.(*videoupload.VideoUploadServiceQueryProgressResult)
+	success, err := handler.(videoupload.VideoUploadService).QueryProgress(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newVideoUploadServiceQueryProgressArgs() interface{} {
+	return videoupload.NewVideoUploadServiceQueryProgressArgs()
+}
+
+func newVideoUploadServiceQueryProgressResult() interface{} {
+	return videoupload.NewVideoUploadServiceQueryProgressResult()
+}
+
+func abortUploadHandler(ctx context.Context, handler interface{}, arg, result interface{}) error {
+	realArg := arg.(*videoupload.VideoUploadServiceAbortUploadArgs)
+	realResult := result.(*videoupload.VideoUploadServiceAbortUploadResult)
+	success, err := handler.(videoupload.VideoUploadService).AbortUpload(ctx, realArg.Req)
+	if err != nil {
+		return err
+	}
+	realResult.Success = success
+	return nil
+}
+func newVideoUploadServiceAbortUploadArgs() interface{} {
+	return videoupload.NewVideoUploadServiceAbortUploadArgs()
+}
+
+func newVideoUploadServiceAbortUploadResult() interface{} {
+	return videoupload.NewVideoUploadServiceAbortUploadResult()
+}
+
 type kClient struct {
 	c client.Client
 }
@@ -224,6 +274,26 @@ func (p *kClient) SimpleUpload(ctx context.Context, req *videoupload.SimpleUploa
 	_args.Req = req
 	var _result videoupload.VideoUploadServiceSimpleUploadResult
 	if err = p.c.Call(ctx, "SimpleUpload", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) QueryProgress(ctx context.Context, req *videoupload.QueryProgressReq) (r *videoupload.QueryProgressResp, err error) {
+	var _args videoupload.VideoUploadServiceQueryProgressArgs
+	_args.Req = req
+	var _result videoupload.VideoUploadServiceQueryProgressResult
+	if err = p.c.Call(ctx, "QueryProgress", &_args, &_result); err != nil {
+		return
+	}
+	return _result.GetSuccess(), nil
+}
+
+func (p *kClient) AbortUpload(ctx context.Context, req *videoupload.AbortUploadReq) (r *videoupload.AbortUploadResp, err error) {
+	var _args videoupload.VideoUploadServiceAbortUploadArgs
+	_args.Req = req
+	var _result videoupload.VideoUploadServiceAbortUploadResult
+	if err = p.c.Call(ctx, "AbortUpload", &_args, &_result); err != nil {
 		return
 	}
 	return _result.GetSuccess(), nil

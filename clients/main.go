@@ -21,9 +21,9 @@ import (
 // ── Config ──────────────────────────────────────────────────────────────────
 
 var (
-	baseURL    = "http://127.0.0.1:8080"
-	httpClient = &http.Client{Timeout: 30 * time.Second}
-	token      = ""
+	baseURL     = "http://127.0.0.1:8080"
+	httpClient  = &http.Client{Timeout: 30 * time.Second}
+	token       = ""
 	currentUser = ""
 )
 
@@ -227,6 +227,18 @@ func cmdChunkedUpload() {
 	hash := fmt.Sprintf("%x", md5.Sum(data))
 	fmt.Println("  文件 Hash (MD5):", hash)
 
+	const minChunkSize = 5 * 1024 * 1024
+	if len(data) < minChunkSize {
+		fmt.Println("  文件小于 5MB，自动切换为单次上传 /api/video/upload")
+		code, body, err := doMultipart("/api/video/upload", "file", fname, data, nil)
+		if err != nil {
+			fmt.Println("❌ 单次上传失败:", err)
+			return
+		}
+		printResponse(code, body)
+		return
+	}
+
 	// Step 1: Init
 	fmt.Println("\n  [1/3] 初始化上传...")
 	code, body, err := doJSON("POST", "/api/video/init", map[string]interface{}{
@@ -244,19 +256,42 @@ func cmdChunkedUpload() {
 		return
 	}
 
-	// Check if already uploaded (tombstone)
+	uploadID := ""
 	if body != nil {
-		if status, ok := body["status"].(string); ok && status == "finished" {
-			fmt.Println("  ⚡ 秒传命中！文件已存在，无需重传")
-			return
+		if v, ok := body["upload_id"].(string); ok {
+			uploadID = v
+		}
+	}
+
+	// Check if already uploaded (tombstone) / single-shot hint
+	if body != nil {
+		if status, ok := body["status"].(string); ok {
+			if status == "finished" {
+				fmt.Println("  ⚡ 秒传命中！文件已存在，无需重传")
+				return
+			}
+			if status == "single_shot" {
+				fmt.Println("  ℹ️ 服务端要求小文件走单次上传，自动切换 /api/video/upload")
+				code, body, err := doMultipart("/api/video/upload", "file", fname, data, nil)
+				if err != nil {
+					fmt.Println("❌ 单次上传失败:", err)
+					return
+				}
+				printResponse(code, body)
+				return
+			}
 		}
 	}
 
 	// Step 2: Upload chunks
-	chunkSizeInput := prompt("  分片大小 bytes (留空默认 1024): ")
-	chunkSize := 1024
+	chunkSizeInput := prompt("  分片大小 bytes (留空默认 5242880=5MB): ")
+	chunkSize := minChunkSize
 	if n, err := strconv.Atoi(chunkSizeInput); err == nil && n > 0 {
-		chunkSize = n
+		if n < minChunkSize {
+			fmt.Printf("  ⚠️ 分片最小为 5MB，已自动调整为 %d bytes\n", minChunkSize)
+		} else {
+			chunkSize = n
+		}
 	}
 
 	totalChunks := (len(data) + chunkSize - 1) / chunkSize
@@ -268,9 +303,12 @@ func cmdChunkedUpload() {
 			end = len(data)
 		}
 		chunk := data[start:end]
+		extras := map[string]string{"file_hash": hash, "index": strconv.Itoa(i)}
+		if uploadID != "" {
+			extras["upload_id"] = uploadID
+		}
 		code, body, err := doMultipart("/api/video/upload_chunk", "chunk",
-			fmt.Sprintf("chunk_%d", i), chunk,
-			map[string]string{"file_hash": hash, "index": strconv.Itoa(i)})
+			fmt.Sprintf("chunk_%d", i), chunk, extras)
 		if err != nil || code != 200 {
 			fmt.Printf("    ❌ chunk %d 失败: err=%v code=%d body=%v\n", i, err, code, body)
 			return
@@ -285,6 +323,9 @@ func cmdChunkedUpload() {
 		"file_hash":    hash,
 		"filename":     fname,
 		"total_chunks": int32(totalChunks),
+	}
+	if uploadID != "" {
+		mergeBody["upload_id"] = uploadID
 	}
 	if resInput != "" {
 		mergeBody["resolutions"] = strings.Split(resInput, ",")

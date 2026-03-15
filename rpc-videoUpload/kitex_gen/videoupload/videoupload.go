@@ -150,6 +150,7 @@ type InitUploadResp struct {
 	Status         *string  `thrift:"status,3,optional" frugal:"3,optional,string" json:"status,omitempty"`
 	Url            *string  `thrift:"url,4,optional" frugal:"4,optional,string" json:"url,omitempty"`
 	FinishedChunks []string `thrift:"finished_chunks,5,optional" frugal:"5,optional,list<string>" json:"finished_chunks,omitempty"`
+	UploadId       *string  `thrift:"upload_id,6,optional" frugal:"6,optional,string" json:"upload_id,omitempty"`
 }
 
 func NewInitUploadResp() *InitUploadResp {
@@ -193,6 +194,15 @@ func (p *InitUploadResp) GetFinishedChunks() (v []string) {
 	}
 	return p.FinishedChunks
 }
+
+var InitUploadResp_UploadId_DEFAULT string
+
+func (p *InitUploadResp) GetUploadId() (v string) {
+	if !p.IsSetUploadId() {
+		return InitUploadResp_UploadId_DEFAULT
+	}
+	return *p.UploadId
+}
 func (p *InitUploadResp) SetCode(val int32) {
 	p.Code = val
 }
@@ -208,6 +218,9 @@ func (p *InitUploadResp) SetUrl(val *string) {
 func (p *InitUploadResp) SetFinishedChunks(val []string) {
 	p.FinishedChunks = val
 }
+func (p *InitUploadResp) SetUploadId(val *string) {
+	p.UploadId = val
+}
 
 func (p *InitUploadResp) IsSetStatus() bool {
 	return p.Status != nil
@@ -219,6 +232,10 @@ func (p *InitUploadResp) IsSetUrl() bool {
 
 func (p *InitUploadResp) IsSetFinishedChunks() bool {
 	return p.FinishedChunks != nil
+}
+
+func (p *InitUploadResp) IsSetUploadId() bool {
+	return p.UploadId != nil
 }
 
 func (p *InitUploadResp) String() string {
@@ -234,6 +251,7 @@ var fieldIDToName_InitUploadResp = map[int16]string{
 	3: "status",
 	4: "url",
 	5: "finished_chunks",
+	6: "upload_id",
 }
 
 type UploadChunkReq struct {
@@ -242,6 +260,7 @@ type UploadChunkReq struct {
 	ChunkData  []byte  `thrift:"chunk_data,3,required" frugal:"3,required,binary" json:"chunk_data"`
 	UserId     *string `thrift:"user_id,4,optional" frugal:"4,optional,string" json:"user_id,omitempty"`
 	RequestId  *string `thrift:"request_id,5,optional" frugal:"5,optional,string" json:"request_id,omitempty"`
+	UploadId   *string `thrift:"upload_id,6,optional" frugal:"6,optional,string" json:"upload_id,omitempty"`
 }
 
 func NewUploadChunkReq() *UploadChunkReq {
@@ -280,6 +299,15 @@ func (p *UploadChunkReq) GetRequestId() (v string) {
 	}
 	return *p.RequestId
 }
+
+var UploadChunkReq_UploadId_DEFAULT string
+
+func (p *UploadChunkReq) GetUploadId() (v string) {
+	if !p.IsSetUploadId() {
+		return UploadChunkReq_UploadId_DEFAULT
+	}
+	return *p.UploadId
+}
 func (p *UploadChunkReq) SetFileHash(val string) {
 	p.FileHash = val
 }
@@ -295,6 +323,9 @@ func (p *UploadChunkReq) SetUserId(val *string) {
 func (p *UploadChunkReq) SetRequestId(val *string) {
 	p.RequestId = val
 }
+func (p *UploadChunkReq) SetUploadId(val *string) {
+	p.UploadId = val
+}
 
 func (p *UploadChunkReq) IsSetUserId() bool {
 	return p.UserId != nil
@@ -302,6 +333,10 @@ func (p *UploadChunkReq) IsSetUserId() bool {
 
 func (p *UploadChunkReq) IsSetRequestId() bool {
 	return p.RequestId != nil
+}
+
+func (p *UploadChunkReq) IsSetUploadId() bool {
+	return p.UploadId != nil
 }
 
 func (p *UploadChunkReq) String() string {
@@ -317,6 +352,7 @@ var fieldIDToName_UploadChunkReq = map[int16]string{
 	3: "chunk_data",
 	4: "user_id",
 	5: "request_id",
+	6: "upload_id",
 }
 
 type UploadChunkResp struct {
@@ -384,6 +420,7 @@ type FinalizeUploadReq struct {
 	Height      *int32   `thrift:"height,6,optional" frugal:"6,optional,i32" json:"height,omitempty"`
 	RequestId   *string  `thrift:"request_id,7,optional" frugal:"7,optional,string" json:"request_id,omitempty"`
 	Resolutions []string `thrift:"resolutions,8,optional" frugal:"8,optional,list<string>" json:"resolutions,omitempty"`
+	UploadId    *string  `thrift:"upload_id,9,optional" frugal:"9,optional,string" json:"upload_id,omitempty"`
 }
 
 func NewFinalizeUploadReq() *FinalizeUploadReq {
@@ -449,6 +486,15 @@ func (p *FinalizeUploadReq) GetResolutions() (v []string) {
 	}
 	return p.Resolutions
 }
+
+var FinalizeUploadReq_UploadId_DEFAULT string
+
+func (p *FinalizeUploadReq) GetUploadId() (v string) {
+	if !p.IsSetUploadId() {
+		return FinalizeUploadReq_UploadId_DEFAULT
+	}
+	return *p.UploadId
+}
 func (p *FinalizeUploadReq) SetFileHash(val string) {
 	p.FileHash = val
 }
@@ -473,6 +519,9 @@ func (p *FinalizeUploadReq) SetRequestId(val *string) {
 func (p *FinalizeUploadReq) SetResolutions(val []string) {
 	p.Resolutions = val
 }
+func (p *FinalizeUploadReq) SetUploadId(val *string) {
+	p.UploadId = val
+}
 
 func (p *FinalizeUploadReq) IsSetUserId() bool {
 	return p.UserId != nil
@@ -494,6 +543,10 @@ func (p *FinalizeUploadReq) IsSetResolutions() bool {
 	return p.Resolutions != nil
 }
 
+func (p *FinalizeUploadReq) IsSetUploadId() bool {
+	return p.UploadId != nil
+}
+
 func (p *FinalizeUploadReq) String() string {
 	if p == nil {
 		return "<nil>"
@@ -510,6 +563,7 @@ var fieldIDToName_FinalizeUploadReq = map[int16]string{
 	6: "height",
 	7: "request_id",
 	8: "resolutions",
+	9: "upload_id",
 }
 
 type FinalizeUploadResp struct {
@@ -707,6 +761,167 @@ var fieldIDToName_SimpleUploadResp = map[int16]string{
 	3: "url",
 }
 
+type QueryProgressReq struct {
+	UploadId string `thrift:"upload_id,1,required" frugal:"1,required,string" json:"upload_id"`
+}
+
+func NewQueryProgressReq() *QueryProgressReq {
+	return &QueryProgressReq{}
+}
+
+func (p *QueryProgressReq) InitDefault() {
+}
+
+func (p *QueryProgressReq) GetUploadId() (v string) {
+	return p.UploadId
+}
+func (p *QueryProgressReq) SetUploadId(val string) {
+	p.UploadId = val
+}
+
+func (p *QueryProgressReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("QueryProgressReq(%+v)", *p)
+}
+
+var fieldIDToName_QueryProgressReq = map[int16]string{
+	1: "upload_id",
+}
+
+type QueryProgressResp struct {
+	Code          int32  `thrift:"code,1,required" frugal:"1,required,i32" json:"code"`
+	Msg           string `thrift:"msg,2,required" frugal:"2,required,string" json:"msg"`
+	UploadedParts *int32 `thrift:"uploaded_parts,3,optional" frugal:"3,optional,i32" json:"uploaded_parts,omitempty"`
+}
+
+func NewQueryProgressResp() *QueryProgressResp {
+	return &QueryProgressResp{}
+}
+
+func (p *QueryProgressResp) InitDefault() {
+}
+
+func (p *QueryProgressResp) GetCode() (v int32) {
+	return p.Code
+}
+
+func (p *QueryProgressResp) GetMsg() (v string) {
+	return p.Msg
+}
+
+var QueryProgressResp_UploadedParts_DEFAULT int32
+
+func (p *QueryProgressResp) GetUploadedParts() (v int32) {
+	if !p.IsSetUploadedParts() {
+		return QueryProgressResp_UploadedParts_DEFAULT
+	}
+	return *p.UploadedParts
+}
+func (p *QueryProgressResp) SetCode(val int32) {
+	p.Code = val
+}
+func (p *QueryProgressResp) SetMsg(val string) {
+	p.Msg = val
+}
+func (p *QueryProgressResp) SetUploadedParts(val *int32) {
+	p.UploadedParts = val
+}
+
+func (p *QueryProgressResp) IsSetUploadedParts() bool {
+	return p.UploadedParts != nil
+}
+
+func (p *QueryProgressResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("QueryProgressResp(%+v)", *p)
+}
+
+var fieldIDToName_QueryProgressResp = map[int16]string{
+	1: "code",
+	2: "msg",
+	3: "uploaded_parts",
+}
+
+type AbortUploadReq struct {
+	FileHash string `thrift:"file_hash,2,required" frugal:"2,required,string" json:"file_hash"`
+	UploadId string `thrift:"upload_id,1,required" frugal:"1,required,string" json:"upload_id"`
+}
+
+func NewAbortUploadReq() *AbortUploadReq {
+	return &AbortUploadReq{}
+}
+
+func (p *AbortUploadReq) InitDefault() {
+}
+
+func (p *AbortUploadReq) GetFileHash() (v string) {
+	return p.FileHash
+}
+
+func (p *AbortUploadReq) GetUploadId() (v string) {
+	return p.UploadId
+}
+func (p *AbortUploadReq) SetFileHash(val string) {
+	p.FileHash = val
+}
+func (p *AbortUploadReq) SetUploadId(val string) {
+	p.UploadId = val
+}
+
+func (p *AbortUploadReq) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("AbortUploadReq(%+v)", *p)
+}
+
+var fieldIDToName_AbortUploadReq = map[int16]string{
+	2: "file_hash",
+	1: "upload_id",
+}
+
+type AbortUploadResp struct {
+	Code int32  `thrift:"code,1,required" frugal:"1,required,i32" json:"code"`
+	Msg  string `thrift:"msg,2,required" frugal:"2,required,string" json:"msg"`
+}
+
+func NewAbortUploadResp() *AbortUploadResp {
+	return &AbortUploadResp{}
+}
+
+func (p *AbortUploadResp) InitDefault() {
+}
+
+func (p *AbortUploadResp) GetCode() (v int32) {
+	return p.Code
+}
+
+func (p *AbortUploadResp) GetMsg() (v string) {
+	return p.Msg
+}
+func (p *AbortUploadResp) SetCode(val int32) {
+	p.Code = val
+}
+func (p *AbortUploadResp) SetMsg(val string) {
+	p.Msg = val
+}
+
+func (p *AbortUploadResp) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("AbortUploadResp(%+v)", *p)
+}
+
+var fieldIDToName_AbortUploadResp = map[int16]string{
+	1: "code",
+	2: "msg",
+}
+
 type VideoUploadService interface {
 	InitUpload(ctx context.Context, req *InitUploadReq) (r *InitUploadResp, err error)
 
@@ -715,6 +930,10 @@ type VideoUploadService interface {
 	FinalizeUpload(ctx context.Context, req *FinalizeUploadReq) (r *FinalizeUploadResp, err error)
 
 	SimpleUpload(ctx context.Context, req *SimpleUploadReq) (r *SimpleUploadResp, err error)
+
+	QueryProgress(ctx context.Context, req *QueryProgressReq) (r *QueryProgressResp, err error)
+
+	AbortUpload(ctx context.Context, req *AbortUploadReq) (r *AbortUploadResp, err error)
 }
 
 type VideoUploadServiceInitUploadArgs struct {
@@ -1018,5 +1237,157 @@ func (p *VideoUploadServiceSimpleUploadResult) String() string {
 }
 
 var fieldIDToName_VideoUploadServiceSimpleUploadResult = map[int16]string{
+	0: "success",
+}
+
+type VideoUploadServiceQueryProgressArgs struct {
+	Req *QueryProgressReq `thrift:"req,1" frugal:"1,default,QueryProgressReq" json:"req"`
+}
+
+func NewVideoUploadServiceQueryProgressArgs() *VideoUploadServiceQueryProgressArgs {
+	return &VideoUploadServiceQueryProgressArgs{}
+}
+
+func (p *VideoUploadServiceQueryProgressArgs) InitDefault() {
+}
+
+var VideoUploadServiceQueryProgressArgs_Req_DEFAULT *QueryProgressReq
+
+func (p *VideoUploadServiceQueryProgressArgs) GetReq() (v *QueryProgressReq) {
+	if !p.IsSetReq() {
+		return VideoUploadServiceQueryProgressArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *VideoUploadServiceQueryProgressArgs) SetReq(val *QueryProgressReq) {
+	p.Req = val
+}
+
+func (p *VideoUploadServiceQueryProgressArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *VideoUploadServiceQueryProgressArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoUploadServiceQueryProgressArgs(%+v)", *p)
+}
+
+var fieldIDToName_VideoUploadServiceQueryProgressArgs = map[int16]string{
+	1: "req",
+}
+
+type VideoUploadServiceQueryProgressResult struct {
+	Success *QueryProgressResp `thrift:"success,0,optional" frugal:"0,optional,QueryProgressResp" json:"success,omitempty"`
+}
+
+func NewVideoUploadServiceQueryProgressResult() *VideoUploadServiceQueryProgressResult {
+	return &VideoUploadServiceQueryProgressResult{}
+}
+
+func (p *VideoUploadServiceQueryProgressResult) InitDefault() {
+}
+
+var VideoUploadServiceQueryProgressResult_Success_DEFAULT *QueryProgressResp
+
+func (p *VideoUploadServiceQueryProgressResult) GetSuccess() (v *QueryProgressResp) {
+	if !p.IsSetSuccess() {
+		return VideoUploadServiceQueryProgressResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *VideoUploadServiceQueryProgressResult) SetSuccess(x interface{}) {
+	p.Success = x.(*QueryProgressResp)
+}
+
+func (p *VideoUploadServiceQueryProgressResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *VideoUploadServiceQueryProgressResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoUploadServiceQueryProgressResult(%+v)", *p)
+}
+
+var fieldIDToName_VideoUploadServiceQueryProgressResult = map[int16]string{
+	0: "success",
+}
+
+type VideoUploadServiceAbortUploadArgs struct {
+	Req *AbortUploadReq `thrift:"req,1" frugal:"1,default,AbortUploadReq" json:"req"`
+}
+
+func NewVideoUploadServiceAbortUploadArgs() *VideoUploadServiceAbortUploadArgs {
+	return &VideoUploadServiceAbortUploadArgs{}
+}
+
+func (p *VideoUploadServiceAbortUploadArgs) InitDefault() {
+}
+
+var VideoUploadServiceAbortUploadArgs_Req_DEFAULT *AbortUploadReq
+
+func (p *VideoUploadServiceAbortUploadArgs) GetReq() (v *AbortUploadReq) {
+	if !p.IsSetReq() {
+		return VideoUploadServiceAbortUploadArgs_Req_DEFAULT
+	}
+	return p.Req
+}
+func (p *VideoUploadServiceAbortUploadArgs) SetReq(val *AbortUploadReq) {
+	p.Req = val
+}
+
+func (p *VideoUploadServiceAbortUploadArgs) IsSetReq() bool {
+	return p.Req != nil
+}
+
+func (p *VideoUploadServiceAbortUploadArgs) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoUploadServiceAbortUploadArgs(%+v)", *p)
+}
+
+var fieldIDToName_VideoUploadServiceAbortUploadArgs = map[int16]string{
+	1: "req",
+}
+
+type VideoUploadServiceAbortUploadResult struct {
+	Success *AbortUploadResp `thrift:"success,0,optional" frugal:"0,optional,AbortUploadResp" json:"success,omitempty"`
+}
+
+func NewVideoUploadServiceAbortUploadResult() *VideoUploadServiceAbortUploadResult {
+	return &VideoUploadServiceAbortUploadResult{}
+}
+
+func (p *VideoUploadServiceAbortUploadResult) InitDefault() {
+}
+
+var VideoUploadServiceAbortUploadResult_Success_DEFAULT *AbortUploadResp
+
+func (p *VideoUploadServiceAbortUploadResult) GetSuccess() (v *AbortUploadResp) {
+	if !p.IsSetSuccess() {
+		return VideoUploadServiceAbortUploadResult_Success_DEFAULT
+	}
+	return p.Success
+}
+func (p *VideoUploadServiceAbortUploadResult) SetSuccess(x interface{}) {
+	p.Success = x.(*AbortUploadResp)
+}
+
+func (p *VideoUploadServiceAbortUploadResult) IsSetSuccess() bool {
+	return p.Success != nil
+}
+
+func (p *VideoUploadServiceAbortUploadResult) String() string {
+	if p == nil {
+		return "<nil>"
+	}
+	return fmt.Sprintf("VideoUploadServiceAbortUploadResult(%+v)", *p)
+}
+
+var fieldIDToName_VideoUploadServiceAbortUploadResult = map[int16]string{
 	0: "success",
 }

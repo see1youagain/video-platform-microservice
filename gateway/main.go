@@ -36,10 +36,17 @@ func main() {
 
 	rpc.InitRPC()
 
-	h := server.Default(server.WithHostPorts(":8080"))
+	maxBody := getenvInt("MAX_REQUEST_BODY_SIZE", 50*1024*1024) // 默认 50MB
+	h := server.Default(
+		server.WithHostPorts(":8080"),
+		server.WithMaxRequestBodySize(maxBody),
+	)
 	register(h)
 
-	commonlogger.Logger.Info("✅ Gateway 服务启动成功", zap.String("port", "8080"))
+	commonlogger.Logger.Info("✅ Gateway 服务启动成功",
+		zap.String("port", "8080"),
+		zap.Int("max_request_body_size", maxBody),
+	)
 	logger.Logger.Info("✅ Gateway 内部日志系统已初始化")
 	h.Spin()
 }

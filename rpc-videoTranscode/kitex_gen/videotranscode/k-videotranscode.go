@@ -28,6 +28,7 @@ func (p *TranscodeTaskReq) FastRead(buf []byte) (int, error) {
 	var fieldTypeId thrift.TType
 	var fieldId int16
 	var issetFileHash bool = false
+	var issetUserId bool = false
 	var issetMinioUrl bool = false
 	var issetResolutionList bool = false
 	for {
@@ -48,6 +49,21 @@ func (p *TranscodeTaskReq) FastRead(buf []byte) (int, error) {
 					goto ReadFieldError
 				}
 				issetFileHash = true
+			} else {
+				l, err = thrift.Binary.Skip(buf[offset:], fieldTypeId)
+				offset += l
+				if err != nil {
+					goto SkipFieldError
+				}
+			}
+		case 4:
+			if fieldTypeId == thrift.I64 {
+				l, err = p.FastReadField4(buf[offset:])
+				offset += l
+				if err != nil {
+					goto ReadFieldError
+				}
+				issetUserId = true
 			} else {
 				l, err = thrift.Binary.Skip(buf[offset:], fieldTypeId)
 				offset += l
@@ -99,6 +115,11 @@ func (p *TranscodeTaskReq) FastRead(buf []byte) (int, error) {
 		goto RequiredFieldNotSetError
 	}
 
+	if !issetUserId {
+		fieldId = 4
+		goto RequiredFieldNotSetError
+	}
+
 	if !issetMinioUrl {
 		fieldId = 2
 		goto RequiredFieldNotSetError
@@ -130,6 +151,20 @@ func (p *TranscodeTaskReq) FastReadField1(buf []byte) (int, error) {
 		_field = v
 	}
 	p.FileHash = _field
+	return offset, nil
+}
+
+func (p *TranscodeTaskReq) FastReadField4(buf []byte) (int, error) {
+	offset := 0
+
+	var _field int64
+	if v, l, err := thrift.Binary.ReadI64(buf[offset:]); err != nil {
+		return offset, err
+	} else {
+		offset += l
+		_field = v
+	}
+	p.UserId = _field
 	return offset, nil
 }
 
@@ -178,6 +213,7 @@ func (p *TranscodeTaskReq) FastWrite(buf []byte) int {
 func (p *TranscodeTaskReq) FastWriteNocopy(buf []byte, w thrift.NocopyWriter) int {
 	offset := 0
 	if p != nil {
+		offset += p.fastWriteField4(buf[offset:], w)
 		offset += p.fastWriteField1(buf[offset:], w)
 		offset += p.fastWriteField2(buf[offset:], w)
 		offset += p.fastWriteField3(buf[offset:], w)
@@ -190,6 +226,7 @@ func (p *TranscodeTaskReq) BLength() int {
 	l := 0
 	if p != nil {
 		l += p.field1Length()
+		l += p.field4Length()
 		l += p.field2Length()
 		l += p.field3Length()
 	}
@@ -201,6 +238,13 @@ func (p *TranscodeTaskReq) fastWriteField1(buf []byte, w thrift.NocopyWriter) in
 	offset := 0
 	offset += thrift.Binary.WriteFieldBegin(buf[offset:], thrift.STRING, 1)
 	offset += thrift.Binary.WriteStringNocopy(buf[offset:], w, p.FileHash)
+	return offset
+}
+
+func (p *TranscodeTaskReq) fastWriteField4(buf []byte, w thrift.NocopyWriter) int {
+	offset := 0
+	offset += thrift.Binary.WriteFieldBegin(buf[offset:], thrift.I64, 4)
+	offset += thrift.Binary.WriteI64(buf[offset:], p.UserId)
 	return offset
 }
 
@@ -229,6 +273,13 @@ func (p *TranscodeTaskReq) field1Length() int {
 	l := 0
 	l += thrift.Binary.FieldBeginLength()
 	l += thrift.Binary.StringLengthNocopy(p.FileHash)
+	return l
+}
+
+func (p *TranscodeTaskReq) field4Length() int {
+	l := 0
+	l += thrift.Binary.FieldBeginLength()
+	l += thrift.Binary.I64Length()
 	return l
 }
 

@@ -154,3 +154,67 @@ uid, _ := metainfo.GetPersistentValue(ctx, "user_id")
 ## License
 
 MIT
+
+## 最近一次开发复盘（2026-03）
+
+本轮开发的完整问题记录、修复方案和重构设计，已整理到：
+
+- document/devlog.md（阶段四：网关上传链路、一致性与职责边界重构）
+
+### 本轮关键改动摘要
+
+1. 入口层与分片策略统一
+
+- Gateway 显式配置最大请求体大小（默认 50MB）
+- 客户端、Gateway、rpc-videoUpload 三端统一最小分片为 5MB
+
+2. 链路可观测性修复
+
+- Gateway Trace 中间件将 trace_id/request_id 写入 Kitex 持久元信息
+- 下游 RPC 可以稳定获取同一请求上下文
+
+3. 网关错误处理与状态码规范化
+
+- 修复 download/info handler 的 user_id 类型断言 panic（int64/string 兼容）
+- info/download 按业务码映射真实 HTTP 状态，避免“HTTP 200 + 业务失败”混淆
+
+4. 关键架构重构（主路径一致性）
+
+- Gateway merge 路由改为调用 videoManager.FinalizeUpload
+- videoManager 在下游合并成功后，立即同步事务落库 video_files
+- 主链路不再依赖 Kafka 消费时序，避免“合并成功但查不到记录”的窗口
+
+5. 测试体系修正
+
+- waitVideoInfoReady 从“只看 HTTP 200”改为“HTTP 200 且 body.code=200”
+- 下载测试新增不跟随重定向的请求方法，准确断言网关 3xx
+- 新增“小于 5MB 分片应返回 400”的功能断言
+
+### 当前验证结果
+
+- 集成测试结果：37 passed, 0 failed
+- 参考日志：/tmp/svc-logs/tests-final-after-sync-db-bg.log
+
+
+
+### 本次补充迭代（小文件/大文件专项）
+
+- 上传入口字段统一为 `file_size`，不再并行接受 `total_size`
+- 功能测试新增两条断言：
+  - 小文件 init 返回 `status=single_shot`
+  - 大文件 init 返回 `upload_id` 且不走 `single_shot`
+- 客户端补齐分片流程：透传 `upload_id` 到 `upload_chunk` 与 `merge`
+- 客户端在 init 返回 `single_shot` 时自动切换到 `/api/video/upload`
+
+对应代码变更已同步到：
+
+- `tests/functional.go`
+- `clients/main.go`
+- `gateway/biz/handler/video/init.go`
+
+### 仍需后续治理（不阻塞当前主链路）
+
+- Kafka 基础设施异常：topic leader = none、Group Coordinator Not Available
+- 已通过“同步落库主路径”隔离该问题对 merge/info/transcode 的直接影响
+- 建议后续单独处理 Kafka broker/topic 元数据一致性
+

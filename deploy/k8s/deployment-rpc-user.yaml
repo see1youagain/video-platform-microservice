@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rpc-user
+  namespace: default
+  labels:
+    app: rpc-user
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rpc-user
+  template:
+    metadata:
+      labels:
+        app: rpc-user
+    spec:
+      containers:
+        - name: rpc-user
+          image: video-platform/rpc-user:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8888
+          envFrom:
+            - configMapRef:
+                name: video-platform-config
+            - secretRef:
+                name: video-platform-secret
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            tcpSocket:
+              port: 8888
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: 8888
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rpc-user
+  namespace: default
+  labels:
+    app: rpc-user
+spec:
+  type: ClusterIP
+  selector:
+    app: rpc-user
+  ports:
+    - name: rpc
+      port: 8888
+      targetPort: 8888
+      protocol: TCP
