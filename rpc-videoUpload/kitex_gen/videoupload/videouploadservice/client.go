@@ -15,6 +15,8 @@ type Client interface {
 	UploadChunk(ctx context.Context, req *videoupload.UploadChunkReq, callOptions ...callopt.Option) (r *videoupload.UploadChunkResp, err error)
 	FinalizeUpload(ctx context.Context, req *videoupload.FinalizeUploadReq, callOptions ...callopt.Option) (r *videoupload.FinalizeUploadResp, err error)
 	SimpleUpload(ctx context.Context, req *videoupload.SimpleUploadReq, callOptions ...callopt.Option) (r *videoupload.SimpleUploadResp, err error)
+	QueryProgress(ctx context.Context, req *videoupload.QueryProgressReq, callOptions ...callopt.Option) (r *videoupload.QueryProgressResp, err error)
+	AbortUpload(ctx context.Context, req *videoupload.AbortUploadReq, callOptions ...callopt.Option) (r *videoupload.AbortUploadResp, err error)
 }
 
 // NewClient creates a client for the service defined in IDL.
@@ -64,4 +66,14 @@ func (p *kVideoUploadServiceClient) FinalizeUpload(ctx context.Context, req *vid
 func (p *kVideoUploadServiceClient) SimpleUpload(ctx context.Context, req *videoupload.SimpleUploadReq, callOptions ...callopt.Option) (r *videoupload.SimpleUploadResp, err error) {
 	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
 	return p.kClient.SimpleUpload(ctx, req)
+}
+
+func (p *kVideoUploadServiceClient) QueryProgress(ctx context.Context, req *videoupload.QueryProgressReq, callOptions ...callopt.Option) (r *videoupload.QueryProgressResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.QueryProgress(ctx, req)
+}
+
+func (p *kVideoUploadServiceClient) AbortUpload(ctx context.Context, req *videoupload.AbortUploadReq, callOptions ...callopt.Option) (r *videoupload.AbortUploadResp, err error) {
+	ctx = client.NewCtxWithCallOptions(ctx, callOptions)
+	return p.kClient.AbortUpload(ctx, req)
 }

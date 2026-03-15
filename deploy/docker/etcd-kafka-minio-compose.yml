@@ -82,7 +82,7 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: 127.0.0.1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CREATE_TOPICS: "transcode-tasks:1:1,video.file.uploaded:1:1,video.transcode.finished:1:1"
+      KAFKA_CREATE_TOPICS: "transcode-tasks:4:1,video.file.uploaded:1:1,video.transcode.finished:1:1"
       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
     volumes:

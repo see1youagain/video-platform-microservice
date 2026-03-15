@@ -9,6 +9,7 @@ import (
 
 type TranscodeTaskReq struct {
 	FileHash       string   `thrift:"file_hash,1,required" frugal:"1,required,string" json:"file_hash"`
+	UserId         int64    `thrift:"user_id,4,required" frugal:"4,required,i64" json:"user_id"`
 	MinioUrl       string   `thrift:"minio_url,2,required" frugal:"2,required,string" json:"minio_url"`
 	ResolutionList []string `thrift:"resolution_list,3,required" frugal:"3,required,list<string>" json:"resolution_list"`
 }
@@ -24,6 +25,10 @@ func (p *TranscodeTaskReq) GetFileHash() (v string) {
 	return p.FileHash
 }
 
+func (p *TranscodeTaskReq) GetUserId() (v int64) {
+	return p.UserId
+}
+
 func (p *TranscodeTaskReq) GetMinioUrl() (v string) {
 	return p.MinioUrl
 }
@@ -33,6 +38,9 @@ func (p *TranscodeTaskReq) GetResolutionList() (v []string) {
 }
 func (p *TranscodeTaskReq) SetFileHash(val string) {
 	p.FileHash = val
+}
+func (p *TranscodeTaskReq) SetUserId(val int64) {
+	p.UserId = val
 }
 func (p *TranscodeTaskReq) SetMinioUrl(val string) {
 	p.MinioUrl = val
@@ -50,6 +58,7 @@ func (p *TranscodeTaskReq) String() string {
 
 var fieldIDToName_TranscodeTaskReq = map[int16]string{
 	1: "file_hash",
+	4: "user_id",
 	2: "minio_url",
 	3: "resolution_list",
 }

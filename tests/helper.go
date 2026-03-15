@@ -7,8 +7,10 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 )
@@ -23,7 +25,7 @@ type Client struct {
 
 func NewClient() *Client {
 	return &Client{
-		HTTP: &http.Client{Timeout: 15 * time.Second},
+		HTTP: &http.Client{Timeout: 20 * time.Second},
 	}
 }
 
@@ -51,15 +53,20 @@ func (c *Client) POST(path string, body interface{}) (*http.Response, map[string
 }
 
 func (c *Client) GET(path string, params map[string]string) (*http.Response, map[string]interface{}, error) {
-	url := BaseURL + path
+	u := BaseURL + path
 	if len(params) > 0 {
-		parts := []string{}
-		for k, v := range params {
-			parts = append(parts, k+"="+v)
+		keys := make([]string, 0, len(params))
+		for k := range params {
+			keys = append(keys, k)
 		}
-		url += "?" + strings.Join(parts, "&")
+		sort.Strings(keys)
+		q := url.Values{}
+		for _, k := range keys {
+			q.Set(k, params[k])
+		}
+		u += "?" + q.Encode()
 	}
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", u, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -67,6 +74,44 @@ func (c *Client) GET(path string, params map[string]string) (*http.Response, map
 		req.Header.Set("Authorization", "Bearer "+c.Token)
 	}
 	resp, err := c.HTTP.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(resp.Body)
+	var result map[string]interface{}
+	json.Unmarshal(raw, &result)
+	return resp, result, nil
+}
+
+func (c *Client) GETNoRedirect(path string, params map[string]string) (*http.Response, map[string]interface{}, error) {
+	u := BaseURL + path
+	if len(params) > 0 {
+		keys := make([]string, 0, len(params))
+		for k := range params {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		q := url.Values{}
+		for _, k := range keys {
+			q.Set(k, params[k])
+		}
+		u += "?" + q.Encode()
+	}
+	req, err := http.NewRequest("GET", u, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	if c.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.Token)
+	}
+	nrClient := &http.Client{
+		Timeout: c.HTTP.Timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	resp, err := nrClient.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -111,6 +156,23 @@ func (c *Client) UploadFile(path string, fieldName string, filename string, data
 	return resp, result, nil
 }
 
+// ----- Body parse helpers -----
+
+func ExtractToken(body map[string]interface{}) string {
+	if body == nil {
+		return ""
+	}
+	if token, ok := body["token"].(string); ok && token != "" {
+		return token
+	}
+	if data, ok := body["data"].(map[string]interface{}); ok {
+		if token, ok := data["token"].(string); ok {
+			return token
+		}
+	}
+	return ""
+}
+
 // ----- Test assertion helpers -----
 
 type TestCase struct {
@@ -120,9 +182,9 @@ type TestCase struct {
 }
 
 type TestSuite struct {
-	Name    string
-	Cases   []TestCase
-	Start   time.Time
+	Name  string
+	Cases []TestCase
+	Start time.Time
 }
 
 func NewSuite(name string) *TestSuite {
@@ -158,14 +220,14 @@ func (s *TestSuite) Summary() (passed, failed int) {
 // ----- Stress test helpers -----
 
 type StressResult struct {
-	Name        string
-	Total       int
-	Success     int
-	Fail        int
-	Elapsed     time.Duration
-	LatencyP50  time.Duration
-	LatencyP99  time.Duration
-	RPS         float64
+	Name       string
+	Total      int
+	Success    int
+	Fail       int
+	Elapsed    time.Duration
+	LatencyP50 time.Duration
+	LatencyP99 time.Duration
+	RPS        float64
 }
 
 func (r StressResult) Print() {
@@ -212,7 +274,16 @@ func Percentile(sorted []time.Duration, p float64) time.Duration {
 	return sorted[idx]
 }
 
-// nowMs returns current unix milliseconds as int64 (used for unique names in tests)
 func nowMs() int64 {
 	return time.Now().UnixNano() / int64(time.Millisecond)
+}
+
+func AppendRunLog(path string, msg string) {
+	line := fmt.Sprintf("[%s] %s\n", time.Now().Format(time.RFC3339), strings.TrimSpace(msg))
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	f.WriteString(line)
 }
