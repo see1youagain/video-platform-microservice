@@ -6,7 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"runtime"
 	"time"
+
+	transcodeDb "video-platform-microservice/rpc-videoTranscode/internal/db"
+	"video-platform-microservice/rpc-videoTranscode/kitex_gen/videotranscode"
 
 	commondb "github.com/see1youagain/video-platform-microservice/common/db"
 	commonEvents "github.com/see1youagain/video-platform-microservice/common/events"
@@ -14,8 +18,6 @@ import (
 	commonMinio "github.com/see1youagain/video-platform-microservice/common/minio"
 	commonOutbox "github.com/see1youagain/video-platform-microservice/common/outbox"
 	"gorm.io/gorm"
-	transcodeDb "video-platform-microservice/rpc-videoTranscode/internal/db"
-	"video-platform-microservice/rpc-videoTranscode/kitex_gen/videotranscode"
 )
 
 type VideoTranscodeServiceImpl struct{}
@@ -129,7 +131,8 @@ func StartFileUploadedConsumer(ctx context.Context) {
 	reader := commonKafka.NewReader(commonEvents.TopicTranscodeTasks, "transcode-service")
 	defer reader.Close()
 
-	log.Printf("[videoTranscode] 开始消费 topic=%s", commonEvents.TopicTranscodeTasks)
+	sem := make(chan struct{}, runtime.NumCPU()*2)
+	log.Printf("[videoTranscode] 开始消费 topic=%s, 最大并发: %d", commonEvents.TopicTranscodeTasks, runtime.NumCPU()*2)
 	for {
 		msg, err := reader.ReadMessage(ctx)
 		if err != nil {
@@ -181,7 +184,11 @@ func StartFileUploadedConsumer(ctx context.Context) {
 			continue
 		}
 
-		go processTranscode(ctx, taskID, event.FileHash, event.UserID, event.Resolutions)
+		sem <- struct{}{}
+		go func(t, fh, u string, r []string) {
+			defer func() { <-sem }()
+			processTranscode(ctx, t, fh, u, r)
+		}(taskID, event.FileHash, event.UserID, event.Resolutions)
 	}
 }
 
