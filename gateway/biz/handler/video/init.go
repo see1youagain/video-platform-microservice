@@ -6,7 +6,7 @@ import (
 
 	"video-platform-microservice/gateway/internal/logger"
 	"video-platform-microservice/gateway/internal/validator"
-	videoupload "video-platform-microservice/gateway/kitex_gen/videoupload"
+	videomanager "video-platform-microservice/gateway/kitex_gen/videomanager"
 	"video-platform-microservice/gateway/rpc"
 
 	"github.com/cloudwego/hertz/pkg/app"
@@ -62,16 +62,16 @@ func InitUploadHandler(ctx context.Context, c *app.RequestContext) {
 		return
 	}
 
-	logger.Logger.Info("InitUpload → videoUpload",
+	logger.Logger.Info("InitUpload → videoManager",
 		zap.Any("trace_id", traceID),
 		zap.String("file_hash", req.FileHash),
 	)
 
-	rpcReq := &videoupload.InitUploadReq{
+	rpcReq := &videomanager.InitUploadReq{
 		FileHash:  req.FileHash,
-		Filename:  &req.Filename,
-		FileSize:  &req.FileSize,
-		UserId:    &userIDStr,
+		Filename:  req.Filename,
+		FileSize:  req.FileSize,
+		UserId:    userIDStr,
 		RequestId: &req.RequestID,
 	}
 	if req.Width != 0 {
@@ -81,9 +81,9 @@ func InitUploadHandler(ctx context.Context, c *app.RequestContext) {
 		rpcReq.Height = &req.Height
 	}
 
-	resp, err := rpc.VideoUploadClient.InitUpload(ctx, rpcReq)
+	resp, err := rpc.VideoManagerClient.InitUpload(ctx, rpcReq)
 	if err != nil {
-		logger.Logger.Error("VideoUpload RPC 失败", zap.Any("trace_id", traceID), zap.Error(err))
+		logger.Logger.Error("VideoManager RPC 失败", zap.Any("trace_id", traceID), zap.Error(err))
 		c.JSON(consts.StatusServiceUnavailable, map[string]interface{}{
 			"code":     503,
 			"msg":      "上传服务暂不可用",
