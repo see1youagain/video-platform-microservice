@@ -98,6 +98,19 @@ Infra:
 - Gateway 将 `trace_id` / `request_id` 写入 metainfo 持久上下文
 - 下游服务通过 metainfo 读取用户与追踪信息
 
+### 6. 长阻塞调用与高并发熔断退避机制
+
+针对大文件在网关透传和 `Merge` 时触发 MinIO 物理磁盘 `Compose` 的长耗时特性，网关层对 `rpc-videoUpload` 进行了特定的配置切分：
+- 显式声明 `client.WithRPCTimeout(10 * time.Minute)`，以适配秒级以上的网络和磁盘 I/O 阻塞。
+- 配套微服务原生的 Circuit Breaker 熔断器，当出现极端网络故障或者 I/O 队列超载时，网关主动向前端阻断抛出 `HTTP 503 Service Unavailable`，防止全局协程池泄漏与崩溃。
+
+### 7. 跨设备断点续传与 Hash 溯源
+
+服务现已支持严谨的跨设备或进程奔溃后断点续传恢复（Client-Side Session Continuation）：
+- 强制**强标识溯源**：在初始化上传发往 `/api/video/init` 时，强制前端计算和提交整块文件的物理 `file_hash`。
+- **服务端探测透出**：服务端不盲目清除进度，而是主动进入 Redis `upload_session` 探针检查。当检测到相同 Hash 存在有效上传任务时，由接口同步透传 `finished_chunks`（已上传的准确分片标号列表）。
+- **客户端接管与退避重试**：客户端收到 `503` 后需执行指数退避重发 `/init`，通过接收 `finished_chunks` 游标实现零数据损耗断点对齐，规避重复读取开销。
+
 ## Kafka 主题
 
 当前代码中涉及主题如下：
@@ -184,16 +197,3 @@ go run ./cmd --host http://127.0.0.1:8080
 ## License
 
 MIT
-
-### 6. 长阻塞调用与高并发熔断退避机制
-
-针对大文件在网关透传和 `Merge` 时触发 MinIO 物理磁盘 `Compose` 的长耗时特性，网关层对 `rpc-videoUpload` 进行了特定的配置切分：
-- 显式声明 `client.WithRPCTimeout(10 * time.Minute)`，以适配秒级以上的网络和磁盘 I/O 阻塞。
-- 配套微服务原生的 Circuit Breaker 熔断器，当出现极端网络故障或者 I/O 队列超载时，网关主动向前端阻断抛出 `HTTP 503 Service Unavailable`，防止全局协程池泄漏与崩溃。
-
-### 7. 跨设备断点续传与 Hash 溯源
-
-服务现已支持严谨的跨设备或进程奔溃后断点续传恢复（Client-Side Session Continuation）：
-- 强制**强标识溯源**：在初始化上传发往 `/api/video/init` 时，强制前端计算和提交整块文件的物理 `file_hash`。
-- **服务端探测透出**：服务端不盲目清除进度，而是主动进入 Redis `upload_session` 探针检查。当检测到相同 Hash 存在有效上传任务时，由接口同步透传 `finished_chunks`（已上传的准确分片标号列表）。
-- **客户端接管与退避重试**：客户端收到 `503` 后需执行指数退避重发 `/init`，通过接收 `finished_chunks` 游标实现零数据损耗断点对齐，规避重复读取开销。
