@@ -40,7 +40,7 @@ func main() {
 	}
 
 	// ─── Kafka 消费者注册（file.uploaded 订阅）───────────────────────────
-	if err := commonKafka.InitKafkaConsumer(commonEvents.TopicTranscodeTasks, "transcode-service"); err != nil {
+	if err := commonKafka.InitKafkaConsumer(commonEvents.TopicTranscodeRequested, "transcode-service"); err != nil {
 		log.Printf("⚠️  Kafka Consumer 初始化失败: %v", err)
 	}
 

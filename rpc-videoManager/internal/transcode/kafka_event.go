@@ -16,7 +16,7 @@ UserID      string   `json:"user_id"`
 Resolutions []string `json:"resolutions"`
 }
 
-// PublishTaskEvent 将转码任务事件发布到 Kafka topic "video-transcode-jobs"
+// PublishTaskEvent 将转码任务事件发布到 Kafka topic commonEvents.TopicTranscodeRequested
 func PublishTaskEvent(ctx context.Context, taskID, fileHash, userID string, resolutions []string) error {
 event := TranscodeTaskEvent{
 TaskID:      taskID,

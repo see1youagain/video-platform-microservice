@@ -75,7 +75,7 @@ func (s *VideoTranscodeServiceImpl) CreateTask(ctx context.Context, req *videotr
 		return repo.EnqueueTx(tx, commonOutbox.Message{
 			AggregateType: "transcode_job",
 			AggregateID:   taskID,
-			Topic:         commonEvents.TopicTranscodeTasks,
+			Topic:         commonEvents.TopicTranscodeRequested,
 			MessageKey:    "tc:" + taskID,
 			Payload:       string(payload),
 		})
@@ -128,11 +128,11 @@ func (s *VideoTranscodeServiceImpl) GetStatus(ctx context.Context, req *videotra
 }
 
 func StartFileUploadedConsumer(ctx context.Context) {
-	reader := commonKafka.NewReader(commonEvents.TopicTranscodeTasks, "transcode-service")
+	reader := commonKafka.NewReader(commonEvents.TopicTranscodeRequested, "transcode-service")
 	defer reader.Close()
 
 	sem := make(chan struct{}, runtime.NumCPU()*2)
-	log.Printf("[videoTranscode] 开始消费 topic=%s, 最大并发: %d", commonEvents.TopicTranscodeTasks, runtime.NumCPU()*2)
+	log.Printf("[videoTranscode] 开始消费 topic=%s, 最大并发: %d", commonEvents.TopicTranscodeRequested, runtime.NumCPU()*2)
 	for {
 		msg, err := reader.ReadMessage(ctx)
 		if err != nil {

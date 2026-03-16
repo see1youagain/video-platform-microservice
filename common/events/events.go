@@ -5,7 +5,7 @@ const (
 // videoUpload -> video / videoTranscode
 TopicFileUploaded = "video.file.uploaded"
 // video -> videoTranscode
-TopicTranscodeTasks = "video.transcode.tasks"
+TopicTranscodeRequested = "video.transcode.requested"
 // videoTranscode -> video
 TopicTranscodeFinished = "video.transcode.finished"
 )

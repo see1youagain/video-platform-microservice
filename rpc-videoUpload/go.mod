@@ -7,6 +7,7 @@ require (
 	github.com/cloudwego/gopkg v0.1.10
 	github.com/cloudwego/kitex v0.16.1
 	github.com/kitex-contrib/registry-etcd v0.3.0
+	github.com/minio/minio-go/v7 v7.0.95
 	github.com/see1youagain/video-platform-microservice/common v0.0.0
 	gorm.io/gorm v1.31.1
 )
@@ -48,7 +49,6 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.11 // indirect
 	github.com/minio/crc64nvme v1.0.2 // indirect
 	github.com/minio/md5-simd v1.1.2 // indirect
-	github.com/minio/minio-go/v7 v7.0.95 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect

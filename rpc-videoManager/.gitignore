@@ -1,5 +1,11 @@
 # 二进制文件
 rpc-video
+rpc-user
+user
+rpc-videoManager
+rpc-videoTranscode
+videoTranscode
+clients
 *.exe
 
 # 依赖和缓存

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"video-platform-microservice/rpc-user/internal/db"
-	"video-platform-microservice/rpc-user/internal/utils"
+
 	user "video-platform-microservice/rpc-user/kitex_gen/user"
 
 	commonredis "github.com/see1youagain/video-platform-microservice/common/redis"
@@ -20,7 +20,7 @@ type UserServiceImpl struct{}
 
 // Register implements the UserServiceImpl interface.
 func (s *UserServiceImpl) Register(ctx context.Context, req *user.RegisterReq) (resp *user.RegisterResp, err error) {
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := commonutils.HashPassword(req.Password)
 	if err != nil {
 		return &user.RegisterResp{Code: 500, Msg: "密码加密失败", UserId: 0}, nil
 	}
@@ -43,7 +43,7 @@ func (s *UserServiceImpl) Login(ctx context.Context, req *user.LoginReq) (resp *
 		return &user.LoginResp{Code: 404, Msg: "用户不存在", Token: "", UserId: 0}, nil
 	}
 
-	if !utils.CheckPasswordHash(req.Password, existingUser.Password) {
+	if !commonutils.CheckPasswordHash(req.Password, existingUser.Password) {
 		return &user.LoginResp{Code: 401, Msg: "密码错误", Token: "", UserId: 0}, nil
 	}
 
