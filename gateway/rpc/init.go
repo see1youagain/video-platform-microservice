@@ -4,6 +4,7 @@ import (
 "log"
 "os"
 "strings"
+"time"
 
 "video-platform-microservice/gateway/kitex_gen/user/userservice"
 "video-platform-microservice/gateway/kitex_gen/videomanager/videomanagerservice"
@@ -43,6 +44,8 @@ UserClient, err = userservice.NewClient(
 client.WithResolver(r),
 client.WithCircuitBreaker(cb),
 client.WithLoadBalancer(rrLB),
+		client.WithRPCTimeout(10*time.Minute),
+		client.WithConnectTimeout(10*time.Second),
 )
 if err != nil {
 log.Fatalf("初始化 User 客户端失败: %v", err)
@@ -53,6 +56,8 @@ VideoManagerClient, err = videomanagerservice.NewClient(
 client.WithResolver(r),
 client.WithCircuitBreaker(cb),
 client.WithLoadBalancer(rrLB),
+		client.WithRPCTimeout(10*time.Minute),
+		client.WithConnectTimeout(10*time.Second),
 )
 if err != nil {
 log.Fatalf("初始化 VideoManager 客户端失败: %v", err)
@@ -63,6 +68,8 @@ VideoUploadClient, err = videouploadservice.NewClient(
 client.WithResolver(r),
 client.WithCircuitBreaker(cb),
 client.WithLoadBalancer(rrLB),
+		client.WithRPCTimeout(10*time.Minute),
+		client.WithConnectTimeout(10*time.Second),
 )
 if err != nil {
 log.Fatalf("初始化 VideoUpload 客户端失败: %v", err)

@@ -120,25 +120,50 @@ func (s *VideoUploadServiceImpl) InitUpload(ctx context.Context, req *videouploa
 		return resp, nil
 	}
 
-	uploadID, err := commonMinio.Core.NewMultipartUpload(ctx, commonMinio.BucketName, originalObject(fileHash), minio.PutObjectOptions{
-		ContentType: "video/mp4",
-	})
-	if err != nil {
-		resp.Code = 500
-		resp.Msg = "初始化分片上传失败"
-		return resp, nil
-	}
+var uploadID string
+var status = "new"
+var finishedChunks []string
 
-	// 仅在初始化阶段设置一次 TTL，避免每个分片都 EXPIRE
-	if client := commonredis.GetClient(); client != nil {
-		client.Set(ctx, "upload_progress_ttl:"+uploadID, 1, 24*time.Hour)
-	}
+client := commonredis.GetClient()
+if client != nil {
+if existingUploadID, err := client.Get(ctx, "upload_session:"+fileHash).Result(); err == nil && existingUploadID != "" {
+keys, err := client.HKeys(ctx, "upload_progress:"+existingUploadID).Result()
+if err == nil {
+for _, k := range keys {
+if part, err := strconv.Atoi(k); err == nil {
+finishedChunks = append(finishedChunks, strconv.Itoa(part-1))
+}
+}
+uploadID = existingUploadID
+status = "partial"
+}
+}
+}
 
-	status := "new"
-	resp.Code = 200
-	resp.Msg = "可以开始上传"
-	resp.Status = &status
-	resp.UploadId = &uploadID
+if uploadID == "" {
+id, err := commonMinio.Core.NewMultipartUpload(ctx, commonMinio.BucketName, originalObject(fileHash), minio.PutObjectOptions{
+ContentType: "video/mp4",
+})
+if err != nil {
+resp.Code = 500
+resp.Msg = "Init MinIO error: " + err.Error()
+return resp, nil
+}
+uploadID = id
+if client != nil {
+client.Set(ctx, "upload_progress_ttl:"+uploadID, 1, 24*time.Hour)
+client.Set(ctx, "upload_session:"+fileHash, uploadID, 24*time.Hour)
+}
+}
+
+resp.Code = 200
+resp.Msg = "可以开始上传"
+if len(finishedChunks) > 0 {
+status = "partial"
+}
+resp.Status = &status
+resp.UploadId = &uploadID
+resp.FinishedChunks = finishedChunks
 	return resp, nil
 }
 

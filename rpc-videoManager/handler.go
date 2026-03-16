@@ -40,7 +40,7 @@ func InitVideoUploadClient(etcdEndpoints []string) {
 		log.Printf("⚠️  初始化 etcd resolver 失败: %v，进度查询/中止功能将降级", err)
 		return
 	}
-	c, err := uploadSvc.NewClient("videoupload", client.WithResolver(r))
+	c, err := uploadSvc.NewClient("videoupload", client.WithResolver(r), client.WithRPCTimeout(10*time.Minute), client.WithConnectTimeout(10*time.Second))
 	if err != nil {
 		log.Printf("⚠️  初始化 videoUpload 客户端失败: %v", err)
 		return
@@ -117,6 +117,7 @@ func (s *VideoManagerServiceImpl) InitUpload(ctx context.Context, req *videomana
 	resp.Msg = upResp.Msg
 	resp.Status = upResp.Status
 	resp.Url = upResp.Url
+	resp.FinishedChunks = upResp.FinishedChunks
 	resp.UploadId = upResp.UploadId
 	return resp, nil
 }
