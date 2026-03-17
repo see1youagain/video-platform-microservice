@@ -13,6 +13,7 @@ import (
 	"github.com/joho/godotenv"
 	etcd "github.com/kitex-contrib/registry-etcd"
 	commondb "github.com/see1youagain/video-platform-microservice/common/db"
+	userdb "video-platform-microservice/rpc-user/internal/db"
 	commonlogger "github.com/see1youagain/video-platform-microservice/common/logger"
 	commonredis "github.com/see1youagain/video-platform-microservice/common/redis"
 )
@@ -27,6 +28,12 @@ func main() {
 	}
 	defer commondb.Close()
 	log.Println("✅ 数据库连接成功")
+
+	// AutoMigrate: 确保 users 表存在
+	if err := commondb.GetDB().AutoMigrate(&userdb.User{}); err != nil {
+		log.Fatalf("AutoMigrate users 失败: %v", err)
+	}
+	log.Println("✅ users 表迁移完成")
 
 	if err := commonredis.InitRedis(); err != nil {
 		log.Fatalf("Redis 初始化失败: %v", err)

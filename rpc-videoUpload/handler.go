@@ -9,6 +9,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bytedance/gopkg/cloud/metainfo"
@@ -42,6 +43,14 @@ func originalObject(hash string) string {
 
 type VideoUploadServiceImpl struct{}
 
+func isUniqueConflict(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := strings.ToLower(err.Error())
+	return strings.Contains(errMsg, "duplicate") || strings.Contains(errMsg, "unique")
+}
+
 func findFinishedUpload(fileHash string) (*uploadDb.UploadFile, error) {
 	var record uploadDb.UploadFile
 	err := commondb.GetDB().Where("file_hash = ? AND status = ?", fileHash, "finished").Order("id DESC").First(&record).Error
@@ -52,13 +61,13 @@ func findFinishedUpload(fileHash string) (*uploadDb.UploadFile, error) {
 }
 
 func persistFinalize(fileHash, filename, userID, minioURL string, req *videoupload.FinalizeUploadReq) error {
-	return commondb.DB.Transaction(func(tx *gorm.DB) error {
+	err := commondb.DB.Transaction(func(tx *gorm.DB) error {
 		var reqID string
 		if req.RequestId != nil {
 			reqID = *req.RequestId
 		}
 
-		if txErr := tx.Where(uploadDb.UploadFile{FileHash: fileHash}).
+		if txErr := tx.Where(uploadDb.UploadFile{FileHash: fileHash, UserID: userID}).
 			Assign(uploadDb.UploadFile{
 				UserID:    userID,
 				Filename:  filename,
@@ -85,6 +94,10 @@ func persistFinalize(fileHash, filename, userID, minioURL string, req *videouplo
 		}
 		return tx.Create(&outboxMsg).Error
 	})
+	if err != nil && isUniqueConflict(err) {
+		return nil
+	}
+	return err
 }
 
 func (s *VideoUploadServiceImpl) InitUpload(ctx context.Context, req *videoupload.InitUploadReq) (*videoupload.InitUploadResp, error) {
@@ -120,50 +133,50 @@ func (s *VideoUploadServiceImpl) InitUpload(ctx context.Context, req *videouploa
 		return resp, nil
 	}
 
-var uploadID string
-var status = "new"
-var finishedChunks []string
+	var uploadID string
+	var status = "new"
+	var finishedChunks []string
 
-client := commonredis.GetClient()
-if client != nil {
-if existingUploadID, err := client.Get(ctx, "upload_session:"+fileHash).Result(); err == nil && existingUploadID != "" {
-keys, err := client.HKeys(ctx, "upload_progress:"+existingUploadID).Result()
-if err == nil {
-for _, k := range keys {
-if part, err := strconv.Atoi(k); err == nil {
-finishedChunks = append(finishedChunks, strconv.Itoa(part-1))
-}
-}
-uploadID = existingUploadID
-status = "partial"
-}
-}
-}
+	client := commonredis.GetClient()
+	if client != nil {
+		if existingUploadID, err := client.Get(ctx, "upload_session:"+fileHash).Result(); err == nil && existingUploadID != "" {
+			keys, err := client.HKeys(ctx, "upload_progress:"+existingUploadID).Result()
+			if err == nil {
+				for _, k := range keys {
+					if part, err := strconv.Atoi(k); err == nil {
+						finishedChunks = append(finishedChunks, strconv.Itoa(part-1))
+					}
+				}
+				uploadID = existingUploadID
+				status = "partial"
+			}
+		}
+	}
 
-if uploadID == "" {
-id, err := commonMinio.Core.NewMultipartUpload(ctx, commonMinio.BucketName, originalObject(fileHash), minio.PutObjectOptions{
-ContentType: "video/mp4",
-})
-if err != nil {
-resp.Code = 500
-resp.Msg = "Init MinIO error: " + err.Error()
-return resp, nil
-}
-uploadID = id
-if client != nil {
-client.Set(ctx, "upload_progress_ttl:"+uploadID, 1, 24*time.Hour)
-client.Set(ctx, "upload_session:"+fileHash, uploadID, 24*time.Hour)
-}
-}
+	if uploadID == "" {
+		id, err := commonMinio.Core.NewMultipartUpload(ctx, commonMinio.BucketName, originalObject(fileHash), minio.PutObjectOptions{
+			ContentType: "video/mp4",
+		})
+		if err != nil {
+			resp.Code = 500
+			resp.Msg = "Init MinIO error: " + err.Error()
+			return resp, nil
+		}
+		uploadID = id
+		if client != nil {
+			client.Set(ctx, "upload_progress_ttl:"+uploadID, 1, 24*time.Hour)
+			client.Set(ctx, "upload_session:"+fileHash, uploadID, 24*time.Hour)
+		}
+	}
 
-resp.Code = 200
-resp.Msg = "可以开始上传"
-if len(finishedChunks) > 0 {
-status = "partial"
-}
-resp.Status = &status
-resp.UploadId = &uploadID
-resp.FinishedChunks = finishedChunks
+	resp.Code = 200
+	resp.Msg = "可以开始上传"
+	if len(finishedChunks) > 0 {
+		status = "partial"
+	}
+	resp.Status = &status
+	resp.UploadId = &uploadID
+	resp.FinishedChunks = finishedChunks
 	return resp, nil
 }
 
@@ -350,6 +363,9 @@ func (s *VideoUploadServiceImpl) AbortUpload(ctx context.Context, req *videouplo
 	err := commonMinio.Core.AbortMultipartUpload(ctx, commonMinio.BucketName, originalObject(req.FileHash), req.UploadId)
 	if err != nil {
 		log.Printf("[AbortUpload] err: %v", err)
+		resp.Code = 500
+		resp.Msg = "取消分片上传失败"
+		return resp, nil
 	}
 
 	resp.Code = 200
