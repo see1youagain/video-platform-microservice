@@ -103,13 +103,15 @@ Infra:
 针对大文件在网关透传和 `Merge` 时触发 MinIO 物理磁盘 `Compose` 的长耗时特性，网关层对 `rpc-videoUpload` 进行了特定的配置切分：
 - 显式声明 `client.WithRPCTimeout(10 * time.Minute)`，以适配秒级以上的网络和磁盘 I/O 阻塞。
 - 配套微服务原生的 Circuit Breaker 熔断器，当出现极端网络故障或者 I/O 队列超载时，网关主动向前端阻断抛出 `HTTP 503 Service Unavailable`，防止全局协程池泄漏与崩溃。
+- 需要注意：当前这部分结论主要由上传/合并链路压测支撑，不应外推到登录等认证链路；`/api/login` 在高并发下仍有待单独治理。
 
-### 7. 跨设备断点续传与 Hash 溯源
+### 7. 断点续传能力（当前实现）
 
-服务现已支持严谨的跨设备或进程奔溃后断点续传恢复（Client-Side Session Continuation）：
-- 强制**强标识溯源**：在初始化上传发往 `/api/video/init` 时，强制前端计算和提交整块文件的物理 `file_hash`。
-- **服务端探测透出**：服务端不盲目清除进度，而是主动进入 Redis `upload_session` 探针检查。当检测到相同 Hash 存在有效上传任务时，由接口同步透传 `finished_chunks`（已上传的准确分片标号列表）。
-- **客户端接管与退避重试**：客户端收到 `503` 后需执行指数退避重发 `/init`，通过接收 `finished_chunks` 游标实现零数据损耗断点对齐，规避重复读取开销。
+当前实现已在 `InitUpload` 中返回 `finished_chunks`，语义如下：
+- 由 `rpc-videoUpload` 从 Redis 集合键 `upload:chunks:<file_hash>` 读取已完成分片索引。
+- 当集合非空时，`InitUploadResp.status` 返回 `partial`，并同步返回 `finished_chunks`。
+- 当 Redis 不可用或读取失败时，接口会降级为不返回分片列表（`finished_chunks` 为空），不会触发 `503` 语义。
+- 该能力依赖 Redis 中间状态，当前不是 MySQL 持久化恢复模型。
 
 ## Kafka 主题
 
@@ -180,14 +182,33 @@ cd gateway && go run .
 
 ```bash
 cd tests
-go run ./cmd --host http://127.0.0.1:8080
+# 全量：基础 + 功能 + 并发正确性 + 全量压测
+go run ./cmd
+
+# 分步压测
+# 第一步：S2/S3（注册/登录吞吐）
+go run ./cmd s23
+# 第二步：S4-S7（鉴权后接口与峰值大文件场景）
+go run ./cmd s4s7
+# 第三步：500MB / 100 分片长会话
+ go run ./cmd long
+# 第四步：同一 file_hash 并发 merge（默认 10 轮）
+SAMEHASH_ROUNDS=20 go run ./cmd samehash
 ```
 
-## 当前测试基线
+## 当前测试与压测基线
 
+功能正确性：
 - BASIC: 12 passed, 0 failed
 - FUNCTIONAL: 25 passed, 0 failed
-- TOTAL: 37 passed, 0 failed
+- CONCURRENT: 10 passed, 0 failed
+- TOTAL: 47 passed, 0 failed
+
+专项压测结论（2026-03-17 二轮）：
+- `S4-S7`：在修正压测脚本 `file_hash` 长度后全部通过，其中 `S7`（10 并发三分片大文件上传）为 10/10 成功。
+- `500MB / 100 分片` 长会话：上传与 merge 成功，样本中 goroutine 与内存曲线未出现失控增长。
+- `同一 file_hash` 并发 merge：`50 并发 × 20 轮 = 1000/1000` 返回 200，验证了 finalize 幂等路径在高压下成立。
+- `S3 /api/login`：在将 bcrypt cost 从 14 调整到 12 后仅出现阶段性改善，仍然存在高并发下不稳定问题；当前不能声称“认证链路压测已稳定通过”。
 
 ## 已知待治理项
 

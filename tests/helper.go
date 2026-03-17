@@ -287,3 +287,9 @@ func AppendRunLog(path string, msg string) {
 	defer f.Close()
 	f.WriteString(line)
 }
+
+// newHTTPClientTimeout creates an *http.Client with a custom timeout.
+// Used by concurrent tests where large-chunk uploads may exceed the default 20s.
+func newHTTPClientTimeout(d time.Duration) *http.Client {
+	return &http.Client{Timeout: d}
+}

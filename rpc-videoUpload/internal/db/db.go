@@ -6,8 +6,8 @@ import (
 
 type UploadFile struct {
 	ID        uint64 `gorm:"primaryKey;autoIncrement"`
-	FileHash  string `gorm:"size:64;not null;index:idx_hash_user,priority:1"`
-	UserID    string `gorm:"size:64;not null;index:idx_hash_user,priority:2"`
+	FileHash  string `gorm:"size:64;not null;uniqueIndex:uniq_hash_user,priority:1"`
+	UserID    string `gorm:"size:64;not null;uniqueIndex:uniq_hash_user,priority:2"`
 	Filename  string `gorm:"size:255;not null"`
 	FileSize  int64  `gorm:"not null;default:0"`
 	URL       string `gorm:"size:512;not null"`

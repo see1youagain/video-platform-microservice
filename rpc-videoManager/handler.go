@@ -241,19 +241,59 @@ func (s *VideoManagerServiceImpl) AbortUpload(ctx context.Context, req *videoman
 		return resp, nil
 	}
 
-	commondb.GetDB().Model(&managerDb.File{}).
-		Where("file_hash = ?", req.FileHash).
-		Update("status", "cancelled")
-
-	if uploadClient != nil {
-		_, err := uploadClient.AbortUpload(ctx, &videoupload.AbortUploadReq{
-			UploadId: req.UploadId,
-			FileHash: req.FileHash,
-		})
-		if err != nil {
-			log.Printf("[AbortUpload] 调用 videoUpload 失败: %v", err)
+	markAbortFailed := func() {
+		if err := commondb.GetDB().Model(&managerDb.File{}).
+			Where("file_hash = ?", req.FileHash).
+			Update("status", "abort_failed").Error; err != nil {
+			log.Printf("[AbortUpload] 标记 abort_failed 失败 fileHash=%s err=%v", req.FileHash, err)
 		}
 	}
+
+	if uploadClient == nil {
+		markAbortFailed()
+		resp.Code = 500
+		resp.Msg = "上传服务不可用，取消失败"
+		return resp, nil
+	}
+
+	uploadResp, err := uploadClient.AbortUpload(ctx, &videoupload.AbortUploadReq{
+		UploadId: req.UploadId,
+		FileHash: req.FileHash,
+	})
+	if err != nil {
+		log.Printf("[AbortUpload] 调用 videoUpload 失败: %v", err)
+		markAbortFailed()
+		resp.Code = 500
+		resp.Msg = "取消分片上传失败"
+		return resp, nil
+	}
+
+	if uploadResp == nil || uploadResp.Code != 200 {
+		var uploadCode int32
+		var uploadMsg string
+		if uploadResp != nil {
+			uploadCode = uploadResp.Code
+			uploadMsg = uploadResp.Msg
+		}
+		log.Printf("[AbortUpload] videoUpload 返回失败 fileHash=%s code=%d msg=%s", req.FileHash, uploadCode, uploadMsg)
+		markAbortFailed()
+		resp.Code = 500
+		if uploadMsg != "" {
+			resp.Msg = uploadMsg
+		} else {
+			resp.Msg = "取消分片上传失败"
+		}
+		return resp, nil
+	}
+
+	if err := commondb.GetDB().Model(&managerDb.File{}).
+		Where("file_hash = ?", req.FileHash).
+		Update("status", "cancelled").Error; err != nil {
+		resp.Code = 500
+		resp.Msg = "更新上传状态失败"
+		return resp, nil
+	}
+
 	resp.Code = 200
 	resp.Msg = "已取消"
 	return resp, nil
