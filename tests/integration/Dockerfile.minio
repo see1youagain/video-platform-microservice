@@ -1,0 +1,11 @@
+# MinIO RELEASE.2025-04-22T22-12-26Z, official Git commit pinned below.
+# Build from source because the community binary download endpoint returns 410.
+ARG GO_IMAGE=golang:1.24.10-bookworm
+ARG ALPINE_IMAGE=alpine:3.22
+FROM ${GO_IMAGE} AS build
+ARG GOPROXY=https://proxy.golang.org,direct
+ENV GOPROXY=${GOPROXY}
+RUN CGO_ENABLED=0 go install github.com/minio/minio@0d7408fc9969caf07de6a8c3a84f9fbb10a6739e
+FROM ${ALPINE_IMAGE}
+COPY --from=build /go/bin/minio /usr/local/bin/minio
+ENTRYPOINT ["/usr/local/bin/minio"]

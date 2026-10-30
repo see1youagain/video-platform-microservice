@@ -20,6 +20,7 @@ type Message struct {
 	Key   []byte
 	Value []byte
 	Time  time.Time
+	raw   kafka.Message
 }
 
 // ─── Broker 配置 ──────────────────────────────────────────────────────────────
@@ -127,6 +128,19 @@ func (r *Reader) ReadMessage(ctx context.Context) (Message, error) {
 }
 
 func (r *Reader) Close() error { return r.r.Close() }
+
+// FetchMessage does not acknowledge work. Commit only after durable processing.
+func (r *Reader) FetchMessage(ctx context.Context) (Message, error) {
+	msg, err := r.r.FetchMessage(ctx)
+	if err != nil {
+		return Message{}, err
+	}
+	return Message{Topic: msg.Topic, Key: msg.Key, Value: msg.Value, Time: msg.Time, raw: msg}, nil
+}
+
+func (r *Reader) CommitMessage(ctx context.Context, msg Message) error {
+	return r.r.CommitMessages(ctx, msg.raw)
+}
 
 // ─── 向后兼容的全局 Reader ───────────────────────────────────────────────────
 

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	userdb "video-platform-microservice/rpc-user/internal/db"
 	"video-platform-microservice/rpc-user/internal/utils"
 	user "video-platform-microservice/rpc-user/kitex_gen/user/userservice"
 
@@ -26,6 +27,9 @@ func main() {
 		log.Fatalf("数据库初始化失败: %v", err)
 	}
 	defer commondb.Close()
+	if err := commondb.GetDB().AutoMigrate(&userdb.User{}); err != nil {
+		log.Fatalf("用户表初始化失败: %v", err)
+	}
 	log.Println("✅ 数据库连接成功")
 
 	if err := commonredis.InitRedis(); err != nil {

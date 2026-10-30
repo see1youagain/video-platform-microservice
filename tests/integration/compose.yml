@@ -1,0 +1,117 @@
+name: video-transcode-test
+services:
+  mysql:
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: integration-only
+      MYSQL_DATABASE: video_platform_test
+    tmpfs: [/var/lib/mysql]
+    healthcheck:
+      test: [CMD, mysqladmin, ping, -h, localhost, -pintegration-only]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --save, '', --appendonly, 'no']
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.17
+    command: [etcd, --name, test, --listen-client-urls, 'http://0.0.0.0:2379', --advertise-client-urls, 'http://etcd:2379', --listen-peer-urls, 'http://0.0.0.0:2380', --initial-advertise-peer-urls, 'http://etcd:2380', --initial-cluster, 'test=http://etcd:2380']
+    healthcheck:
+      test: [CMD, etcdctl, endpoint, health]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  kafka:
+    image: apache/kafka:3.9.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    healthcheck:
+      test: [CMD-SHELL, '/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list']
+      interval: 5s
+      timeout: 10s
+      retries: 30
+  minio:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile.minio
+    command: [server, /data]
+    environment:
+      MINIO_ROOT_USER: integration
+      MINIO_ROOT_PASSWORD: integration-only
+    tmpfs: [/data]
+    healthcheck:
+      test: [CMD, wget, -q, --spider, 'http://localhost:9000/minio/health/live']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  kafka-init:
+    image: apache/kafka:3.9.1
+    entrypoint: [/bin/sh, -ec]
+    command:
+      - |
+        for topic in video.file.uploaded video.transcode.tasks video.transcode.requested video.transcode.finished; do
+          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists --topic "$$topic" --partitions 2 --replication-factor 1
+        done
+    depends_on:
+      kafka: {condition: service_healthy}
+  runner:
+    build:
+      context: ../..
+      dockerfile: tests/integration/Dockerfile
+    volumes:
+      - ../..:/workspace:ro
+      - go-mod-cache:/go/pkg/mod
+      - go-build-cache:/root/.cache/go-build
+    environment:
+      DB_HOST: mysql
+      DB_USER: root
+      DB_PASSWORD: integration-only
+      DB_NAME: video_platform_test
+      REDIS_HOST: redis
+      ETCD_ENDPOINTS: etcd:2379
+      KAFKA_BROKERS: kafka:9092
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: integration
+      MINIO_SECRET_KEY: integration-only
+      MINIO_BUCKET: transcode-integration
+      JWT_SECRET: integration-only-secret-for-tests
+      RUN_TRANSCODE_E2E: '1'
+      RUN_TRANSCODE_DB_INTEGRATION: '1'
+      TRANSCODE_WORKERS: '2'
+      TRANSCODE_THREADS: '1'
+      TRANSCODE_TIMEOUT: 1m
+      RL_GLOBAL_RATE: '10000'
+      RL_GLOBAL_CAPACITY: '20000'
+      RL_USER_RATE: '10000'
+      RL_USER_CAPACITY: '20000'
+      RL_UPLOAD_RATE: '10000'
+      RL_UPLOAD_CAPACITY: '20000'
+    depends_on:
+      mysql: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      etcd: {condition: service_healthy}
+      kafka: {condition: service_healthy}
+      kafka-init: {condition: service_completed_successfully}
+      minio: {condition: service_healthy}
+
+volumes:
+  go-mod-cache:
+  go-build-cache:

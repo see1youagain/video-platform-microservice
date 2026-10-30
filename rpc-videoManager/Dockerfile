@@ -9,7 +9,7 @@ COPY rpc-videoManager ./rpc-videoManager
 
 WORKDIR /build/rpc-videoManager
 
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o rpc-videoManager .
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o rpc-videoManager .
 
 FROM alpine:latest
 
@@ -18,7 +18,6 @@ ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 COPY --from=builder /build/rpc-videoManager/rpc-videoManager .
-COPY --from=builder /build/rpc-videoManager/.env .
 
 EXPOSE 8889
 CMD ["./rpc-videoManager"]

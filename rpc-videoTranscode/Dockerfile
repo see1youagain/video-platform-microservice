@@ -9,7 +9,7 @@ COPY rpc-videoTranscode ./rpc-videoTranscode
 
 WORKDIR /build/rpc-videoTranscode
 
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o rpc-videoTranscode .
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o rpc-videoTranscode .
 
 FROM alpine:latest
 
@@ -18,7 +18,6 @@ ENV TZ=Asia/Shanghai
 
 WORKDIR /app
 COPY --from=builder /build/rpc-videoTranscode/rpc-videoTranscode .
-COPY --from=builder /build/rpc-videoTranscode/.env .
 
-EXPOSE 8890
+EXPOSE 8084
 CMD ["./rpc-videoTranscode"]

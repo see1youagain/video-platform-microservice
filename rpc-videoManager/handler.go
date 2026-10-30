@@ -9,9 +9,9 @@ import (
 
 	"github.com/bytedance/gopkg/cloud/metainfo"
 	"github.com/cloudwego/kitex/client"
+	"github.com/cloudwego/kitex/transport"
 	etcd "github.com/kitex-contrib/registry-etcd"
 	commondb "github.com/see1youagain/video-platform-microservice/common/db"
-	commonOutbox "github.com/see1youagain/video-platform-microservice/common/outbox"
 	"gorm.io/gorm"
 
 	managerDb "video-platform-microservice/rpc-videoManager/internal/db"
@@ -19,16 +19,6 @@ import (
 	"video-platform-microservice/rpc-videoManager/kitex_gen/videoupload"
 	uploadSvc "video-platform-microservice/rpc-videoManager/kitex_gen/videoupload/videouploadservice"
 )
-
-// ─── 转码事件负载（写入 Outbox payload）─────────────────────────────────────
-type StartTranscodePayload struct {
-	TaskID      string   `json:"task_id"`
-	FileHash    string   `json:"file_hash"`
-	UserID      string   `json:"user_id"`
-	MinioURL    string   `json:"minio_url"`
-	Resolutions []string `json:"resolutions"`
-	RequestID   string   `json:"request_id,omitempty"`
-}
 
 // ─── videoUpload Kitex RPC 客户端（由 main.go 初始化后注入）────────────────
 var uploadClient uploadSvc.Client
@@ -40,7 +30,7 @@ func InitVideoUploadClient(etcdEndpoints []string) {
 		log.Printf("⚠️  初始化 etcd resolver 失败: %v，进度查询/中止功能将降级", err)
 		return
 	}
-	c, err := uploadSvc.NewClient("videoupload", client.WithResolver(r), client.WithRPCTimeout(10*time.Minute), client.WithConnectTimeout(10*time.Second))
+	c, err := uploadSvc.NewClient("videoupload", client.WithResolver(r), client.WithTransportProtocol(transport.TTHeader), client.WithRPCTimeout(10*time.Minute), client.WithConnectTimeout(10*time.Second))
 	if err != nil {
 		log.Printf("⚠️  初始化 videoUpload 客户端失败: %v", err)
 		return
@@ -282,6 +272,7 @@ func (s *VideoManagerServiceImpl) GetVideoInfo(ctx context.Context, req *videoma
 	resp.Height = &fhgt
 	resp.Url = &f.URL
 	resp.TranscodeStatus = &f.TranscodeStatus
+	_ = json.Unmarshal([]byte(f.TranscodeURLs), &resp.TranscodeUrls)
 	return resp, nil
 }
 
@@ -303,129 +294,5 @@ func (s *VideoManagerServiceImpl) DeleteVideo(ctx context.Context, req *videoman
 	}
 	resp.Code = 200
 	resp.Msg = "删除成功"
-	return resp, nil
-}
-
-// Transcode ── Transactional Outbox 核心 ────────────────────────────────────
-//
-// 单事务保证：
-//  1. video_files.transcode_status → "pending"
-//  2. INSERT transcode_tasks
-//  3. INSERT outbox_events（topic: video.transcode.requested）
-//
-// Outbox Dispatcher goroutine 异步轮询 outbox_events，
-// 将事件投递至 Kafka → rpc-videoTranscode 消费，执行真正的转码。
-func (s *VideoManagerServiceImpl) Transcode(ctx context.Context, req *videomanager.TranscodeReq) (*videomanager.TranscodeResp, error) {
-	resp := &videomanager.TranscodeResp{}
-	if req.FileHash == "" || req.UserId == "" || len(req.Resolutions) == 0 {
-		resp.Code = 400
-		resp.Msg = "参数不完整"
-		return resp, nil
-	}
-
-	userID := getUserIDFromContext(ctx, req.UserId)
-
-	// 校验文件存在且状态为 finished
-	var videoFile managerDb.File
-	if err := commondb.GetDB().Where("file_hash = ?", req.FileHash).First(&videoFile).Error; err != nil {
-		resp.Code = 404
-		resp.Msg = "视频文件不存在，请先完成上传"
-		return resp, nil
-	}
-	if videoFile.Status != "finished" {
-		resp.Code = 409
-		resp.Msg = fmt.Sprintf("视频状态异常，无法转码: %s", videoFile.Status)
-		return resp, nil
-	}
-
-	taskID := fmt.Sprintf("tc_%s_%d", req.FileHash[:8], time.Now().UnixMilli())
-	resJSON, _ := json.Marshal(req.Resolutions)
-
-	var reqID string
-	if req.RequestId != nil {
-		reqID = *req.RequestId
-	}
-
-	payloadBytes, _ := json.Marshal(StartTranscodePayload{
-		TaskID:      taskID,
-		FileHash:    req.FileHash,
-		UserID:      userID,
-		MinioURL:    videoFile.URL,
-		Resolutions: req.Resolutions,
-		RequestID:   reqID,
-	})
-
-	// ── 本地事务（Transactional Outbox）────────────────────────────────
-	txErr := commondb.GetDB().Transaction(func(tx *gorm.DB) error {
-		// Step 1: 更新视频转码状态
-		if err := tx.Model(&managerDb.File{}).
-			Where("file_hash = ?", req.FileHash).
-			Update("transcode_status", "pending").Error; err != nil {
-			return fmt.Errorf("更新视频状态失败: %w", err)
-		}
-
-		// Step 2: 创建转码任务
-		task := managerDb.TranscodeTask{
-			TaskID:      taskID,
-			FileHash:    req.FileHash,
-			UserID:      userID,
-			Resolutions: string(resJSON),
-			Status:      "pending",
-			RequestID:   reqID,
-		}
-		if err := tx.Create(&task).Error; err != nil {
-			return fmt.Errorf("创建转码任务失败: %w", err)
-		}
-
-		// Step 3: 写入 Outbox（与业务数据同一事务 = 双写强一致）
-		if err := tx.Create(&commonOutbox.Event{
-			AggregateType: "TranscodeTask",
-			AggregateID:   taskID,
-			Topic:         "video.transcode.requested",
-			MessageKey:    req.FileHash,
-			Payload:       string(payloadBytes),
-			Status:        commonOutbox.StatusPending,
-			AvailableAt:   time.Now(),
-		}).Error; err != nil {
-			return fmt.Errorf("写入 Outbox 失败: %w", err)
-		}
-		return nil
-	})
-
-	if txErr != nil {
-		log.Printf("[Transcode] 事务回滚: %v", txErr)
-		resp.Code = 500
-		resp.Msg = "发起转码失败，请重试"
-		return resp, nil
-	}
-
-	log.Printf("[Transcode] 任务 %s 已入 Outbox，等待 Relay 投递 Kafka", taskID)
-	resp.Code = 200
-	resp.Msg = "转码任务已创建"
-	resp.TaskId = &taskID
-	return resp, nil
-}
-
-// GetTranscodeStatus 查询 transcode_tasks 表
-func (s *VideoManagerServiceImpl) GetTranscodeStatus(ctx context.Context, req *videomanager.GetTranscodeStatusReq) (*videomanager.GetTranscodeStatusResp, error) {
-	resp := &videomanager.GetTranscodeStatusResp{}
-	var task managerDb.TranscodeTask
-	if err := commondb.GetDB().Where("task_id = ?", req.TaskId).First(&task).Error; err != nil {
-		resp.Code = 404
-		resp.Msg = "任务不存在"
-		return resp, nil
-	}
-	resp.Code = 200
-	resp.Msg = "ok"
-	s2 := task.Status
-	p := float64(task.Progress) / 100.0
-	resp.Status = &s2
-	resp.Progress = &p
-	if task.ResultURLs != "" {
-		var urls []string
-		if err := json.Unmarshal([]byte(task.ResultURLs), &urls); err == nil && len(urls) > 0 {
-			resp.CompletedUrls = urls
-		}
-	}
 	return resp, nil
 }

@@ -48,6 +48,10 @@ func bizCodeToHTTPStatus(code int32) int {
 		return consts.StatusNotFound
 	case 409:
 		return consts.StatusConflict
+	case 502:
+		return consts.StatusBadGateway
+	case 503:
+		return consts.StatusServiceUnavailable
 	default:
 		return consts.StatusInternalServerError
 	}

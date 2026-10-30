@@ -28,6 +28,9 @@ go.work.sum
 # env file
 .env
 
+# Local test tools, generated media and disposable integration logs
+.tmp/
+
 # Editor/IDE
 # .idea/
 # .vscode/

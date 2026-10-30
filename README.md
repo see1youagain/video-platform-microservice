@@ -39,7 +39,7 @@ Infra:
 | rpc-user | 8888 | 用户注册、登录、JWT |
 | rpc-videoUpload | 8083 | 初始化上传、分片上传、合并、上传进度、秒传检查 |
 | rpc-videoManager | 8889 | 视频信息管理、删除、Finalize 同步落库、转码任务管理 |
-| rpc-videoTranscode | 8084 | 消费转码任务、执行转码流程、回写转码完成事件 |
+| rpc-videoTranscode | 8084 | 持久化转码任务、固定 worker 调用 FFmpeg、上传产物并回写完成/失败事件 |
 
 ## 技术栈
 
@@ -118,7 +118,7 @@ Infra:
 - `video.file.uploaded`
 - `video.transcode.tasks`
 - `video.transcode.finished`
-- `video.transcode.requested`（在 `rpc-videoManager` 的 outbox 写入中使用）
+- `video.transcode.requested`（仅兼容旧版本尚在途中的消息，新任务统一使用 `video.transcode.tasks`）
 
 ## API 概览
 
@@ -180,18 +180,27 @@ cd gateway && go run .
 
 ```bash
 cd tests
-go run ./cmd --host http://127.0.0.1:8080
+go run ./cmd
 ```
 
-## 当前测试基线
+## 测试
 
-- BASIC: 12 passed, 0 failed
-- FUNCTIONAL: 25 passed, 0 failed
-- TOTAL: 37 passed, 0 failed
+历史 HTTP 回归基线为 BASIC 12 项、FUNCTIONAL 25 项。真实转码新增了参数校验、FFmpeg 故障与取消、数据库事务/租约/重复消息单元测试，以及真实媒体集成测试。
+
+完整隔离环境测试会验证 HTTP 上传、Kafka 调度、真实转码产物解码、完成/失败状态收敛、幂等与用户隔离，并运行历史回归套件：
+
+```bash
+docker compose -f tests/integration/compose.yml build
+docker compose -f tests/integration/compose.yml run --rm runner
+docker compose -f tests/integration/compose.yml down -v
+```
+
+真实转码的配置、接口语义和恢复机制见 [转码服务说明](rpc-videoTranscode/README.md)。
 
 ## 已知待治理项
 
-- 转码请求相关 Kafka topic 在代码里存在 `video.transcode.tasks` / `video.transcode.requested` 两种命名，建议统一。
+- 小文件 HTTP 上传仍为网关本地降级路径，尚未接入统一 MinIO/视频元数据链路。
+- 转码产物使用现有存储层生成的七天有效签名 URL；长期访问需另行提供地址刷新机制。
 - Kafka 基础设施异常（如 leader/coordinator 不稳定）会影响异步路径实时性，但不应影响 merge 主链路同步落盘语义。
 
 ## License

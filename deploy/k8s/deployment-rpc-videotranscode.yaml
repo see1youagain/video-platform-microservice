@@ -20,15 +20,19 @@ spec:
           image: video-platform/rpc-videotranscode:latest
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8890
+            - containerPort: 8084
           envFrom:
             - configMapRef:
                 name: video-platform-config
             - secretRef:
                 name: video-platform-secret
           env:
-            - name: RPC_PORT
-              value: "8890"
+            - name: VIDEOTRANSCODE_ADDR
+              value: ":8084"
+            - name: TRANSCODE_WORKERS
+              value: "2"
+            - name: TRANSCODE_THREADS
+              value: "1"
           resources:
             requests:
               cpu: "500m"
@@ -38,12 +42,12 @@ spec:
               memory: "2Gi"
           livenessProbe:
             tcpSocket:
-              port: 8890
+              port: 8084
             initialDelaySeconds: 15
             periodSeconds: 20
           readinessProbe:
             tcpSocket:
-              port: 8890
+              port: 8084
             initialDelaySeconds: 10
             periodSeconds: 15
 ---
@@ -60,6 +64,6 @@ spec:
     app: rpc-videotranscode
   ports:
     - name: rpc
-      port: 8890
-      targetPort: 8890
+      port: 8084
+      targetPort: 8084
       protocol: TCP
