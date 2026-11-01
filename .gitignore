@@ -47,6 +47,10 @@ rpc-user/rpc-user-test
 .env
 
 # 编译的二进制文件
+/clients/clients
+/rpc-videoManager/rpc-videoManager
+/rpc-videoManager/videoManager
+/test/test_comprehensive
 gateway/gateway
 rpc-user/rpc-user
 rpc-video/rpc-video-test
