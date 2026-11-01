@@ -8,6 +8,8 @@ const (
 	TopicTranscodeTasks = "video.transcode.tasks"
 	// Kept for in-flight messages produced by older videoManager versions.
 	TopicTranscodeRequestedLegacy = "video.transcode.requested"
+	// Compatibility name used by the remote engineering changes.
+	TopicTranscodeRequested = TopicTranscodeRequestedLegacy
 	// videoTranscode -> video
 	TopicTranscodeFinished = "video.transcode.finished"
 )

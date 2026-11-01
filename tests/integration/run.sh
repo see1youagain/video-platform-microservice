@@ -43,4 +43,4 @@ done
 curl -fsS http://127.0.0.1:8080/ping >/dev/null
 (cd tests && go test ./integration -run TestTranscodeE2E -count=1 -v -timeout=5m)
 # Existing authentication/upload/download/delete suites remain the regression baseline.
-(cd tests && go run ./cmd)
+(cd tests && go run ./cmd regression)
